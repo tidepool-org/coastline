@@ -1,0 +1,15 @@
+{
+  "service": {
+    "service": "oauth-api-local",
+    "protocol": "http",
+    "host": "localhost:9108",
+    "keyFile": "config/key.pem",
+    "certFile": "config/cert.pem"
+  },
+  "mongo": {
+    "connectionString": "mongodb://localhost/user"
+  },
+  "coastline" : {
+    "salt" : "ADihSEI7tOQQP9xfXMO9HfRpXKu1NpIJ"
+  }
+}
