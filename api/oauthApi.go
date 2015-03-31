@@ -20,7 +20,8 @@ import (
 
 type (
 	OAuthConfig struct {
-		Salt string `json:"salt"`
+		Salt       string `json:"salt"`
+		ExpireDays int    `json:"expireDays"`
 	}
 	OAuthApi struct {
 		oauthServer *osin.Server
@@ -41,7 +42,7 @@ const (
 	scopeUpload scope = "upload"
 	scopeNote   scope = "note"
 
-	expires = 3600
+	oneDay = 24 * 60 * 60 * 1000
 
 	//TODO: get prefix from router??
 	authPostAction = "/oauth/v1/authorize?response_type=%s&client_id=%s&state=%s&scope=%s&redirect_uri=%s"
@@ -141,7 +142,7 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 					UserData:    clientUsr,
 					Scope:       "view",
 					RedirectUri: clientUsr.RedirectUri,
-					ExpiresIn:   expires, //TODO: as config
+					ExpiresIn:   o.OAuthConfig.ExpireDays * time.Hour * 24,
 					CreatedAt:   time.Now(),
 				}
 

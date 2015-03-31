@@ -10,6 +10,7 @@
     "connectionString": "mongodb://localhost/user"
   },
   "coastline" : {
-    "salt" : "ADihSEI7tOQQP9xfXMO9HfRpXKu1NpIJ"
+    "salt" : "ADihSEI7tOQQP9xfXMO9HfRpXKu1NpIJ",
+    "expireDays" : 14
   }
 }
