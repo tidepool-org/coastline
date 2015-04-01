@@ -41,7 +41,6 @@ const (
 	oneDayInSecs = 86400
 
 	//Available scopes's
-	//TODO: configrable ??
 	scopeView   scope = "view"
 	scopeUpload scope = "upload"
 	scopeNote   scope = "note"
@@ -114,22 +113,25 @@ func (o *OAuthApi) signupShow(w http.ResponseWriter, r *http.Request) {
 }
 
 //check we have all the fields we require
-func signupFormValid(fromData url.Values) bool {
-	return fromData.Get("usr_name") != "" && fromData.Get("password") != "" && fromData.Get("email") != "" && fromData.Get("uri") != ""
+func signupFormValid(formData url.Values) bool {
+	return formData.Get("usr_name") != "" &&
+		formData.Get("password") != "" &&
+		formData.Get("email") != "" &&
+		formData.Get("uri") != ""
 }
 
 //return requested scope as a comma seperated list
-func signupScope(fromData url.Values) string {
+func signupScope(formData url.Values) string {
 
 	scopes := []string{}
 
-	if fromData.Get(string(scopeView)) != "" {
+	if formData.Get(string(scopeView)) != "" {
 		scopes = append(scopes, string(scopeView))
 	}
-	if fromData.Get(string(scopeUpload)) != "" {
+	if formData.Get(string(scopeUpload)) != "" {
 		scopes = append(scopes, string(scopeUpload))
 	}
-	if fromData.Get(string(scopeNote)) != "" {
+	if formData.Get(string(scopeNote)) != "" {
 		scopes = append(scopes, string(scopeNote))
 	}
 
@@ -212,6 +214,7 @@ func (o *OAuthApi) authorize(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Print("authorize: logged in so finish the auth request")
+		log.Printf("authorize: the valid request %v", ar)
 		ar.Authorized = true
 		o.oauthServer.FinishAuthorizeRequest(resp, r, ar)
 	}
@@ -219,7 +222,6 @@ func (o *OAuthApi) authorize(w http.ResponseWriter, r *http.Request) {
 		log.Print("authorize: stink bro it's all gone pete tong")
 		log.Printf("ERROR: %s\n", resp.InternalError)
 	}
-	log.Print("authorize: so close, about to give you the JSON ...")
 	osin.OutputJSON(resp, w, r)
 
 }
