@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/RangelReale/osin"
@@ -37,16 +38,17 @@ const (
 	//errors
 	error_signup_details = "sorry but look like something was wrong with your signup details!"
 
+	oneDayInSecs = 86400
+
 	//Available scopes's
+	//TODO: configrable ??
 	scopeView   scope = "view"
 	scopeUpload scope = "upload"
 	scopeNote   scope = "note"
 
-	oneDay = 24 * 60 * 60 * 1000
-
 	//TODO: get prefix from router??
 	authPostAction = "/oauth/v1/authorize?response_type=%s&client_id=%s&state=%s&scope=%s&redirect_uri=%s"
-	scopeItem      = "<input type=\"checkbox\" name=\"scopes\" value=\"%s\" />"
+	scopeItem      = "<input type=\"checkbox\" name=\"%s\" value=\"%s\" />"
 )
 
 func InitOAuthApi(cfg OAuthConfig, s *clients.TestStorage, userApi shoreline.Client) *OAuthApi {
@@ -78,10 +80,12 @@ func (o *OAuthApi) SetHandlers(prefix string, rtr *mux.Router) {
 }
 
 /*
- * Tidepool OAuth
+ * Tidepool OAuth to allow
  */
 
-//Application signup
+/*
+ * Show the signup from so an external user can signup to the tidepool platform
+ */
 func (o *OAuthApi) signupShow(w http.ResponseWriter, r *http.Request) {
 
 	//TODO: as a template
@@ -100,18 +104,45 @@ func (o *OAuthApi) signupShow(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("</fieldset>"))
 	w.Write([]byte("<fieldset>"))
 	w.Write([]byte("<legend>Scope</legend>"))
-	w.Write([]byte(fmt.Sprintf(scopeItem+" Allow Upload on behalf <br />", scopeUpload)))
-	w.Write([]byte(fmt.Sprintf(scopeItem+" Allow Viewing of data <br />", scopeView)))
-	w.Write([]byte(fmt.Sprintf(scopeItem+" Allow Commenting on data <br />", scopeNote)))
+	w.Write([]byte(fmt.Sprintf(scopeItem+" Allow Upload on behalf <br />", scopeUpload, scopeUpload)))
+	w.Write([]byte(fmt.Sprintf(scopeItem+" Allow Viewing of data <br />", scopeView, scopeView)))
+	w.Write([]byte(fmt.Sprintf(scopeItem+" Allow Commenting on data <br />", scopeNote, scopeNote)))
 	w.Write([]byte("<input type=\"submit\"/>"))
 	w.Write([]byte("</fieldset>"))
 	w.Write([]byte("</form>"))
 	w.Write([]byte("</body></html>"))
 }
 
+//check we have all the fields we require
+func signupFormValid(fromData url.Values) bool {
+	return fromData.Get("usr_name") != "" && fromData.Get("password") != "" && fromData.Get("email") != "" && fromData.Get("uri") != ""
+}
+
+//return requested scope as a comma seperated list
+func signupScope(fromData url.Values) string {
+
+	scopes := []string{}
+
+	if fromData.Get(string(scopeView)) != "" {
+		scopes = append(scopes, string(scopeView))
+	}
+	if fromData.Get(string(scopeUpload)) != "" {
+		scopes = append(scopes, string(scopeUpload))
+	}
+	if fromData.Get(string(scopeNote)) != "" {
+		scopes = append(scopes, string(scopeNote))
+	}
+
+	return strings.Join(scopes, ",")
+}
+
+/*
+ * Process signup for the app user
+ */
 func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
+
 	r.ParseForm()
-	if r.Method == "POST" && r.Form.Get("usr_name") != "" && r.Form.Get("password") != "" && r.Form.Get("email") != "" && r.Form.Get("uri") != "" {
+	if r.Method == "POST" && signupFormValid(r.Form) {
 
 		var signupData = []byte(fmt.Sprintf(`{"username": "%s", "password": "%s","emails":["%s"]}`, r.Form.Get("usr_name"), r.Form.Get("password"), r.Form.Get("email")))
 
@@ -140,9 +171,9 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 
 				authData := &osin.AuthorizeData{
 					UserData:    clientUsr,
-					Scope:       "view",
+					Scope:       signupScope(r.Form),
 					RedirectUri: clientUsr.RedirectUri,
-					ExpiresIn:   o.OAuthConfig.ExpireDays * time.Hour * 24,
+					ExpiresIn:   int32(o.OAuthConfig.ExpireDays * oneDayInSecs),
 					CreatedAt:   time.Now(),
 				}
 
@@ -166,6 +197,9 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
+ * Authorize 'app' user to access the tidepool platfrom, returning a token
+ */
 func (o *OAuthApi) authorize(w http.ResponseWriter, r *http.Request) {
 
 	resp := o.oauthServer.NewResponse()
