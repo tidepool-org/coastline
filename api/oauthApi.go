@@ -93,20 +93,14 @@ func (o *OAuthApi) signupShow(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("<form action=\"\" method=\"POST\">"))
 	w.Write([]byte("<fieldset>"))
 	w.Write([]byte("<legend>Application</legend>"))
-	w.Write([]byte("Name: <input type=\"text\" name=\"usr_name\" /><br/>"))
-	w.Write([]byte("Redirect Uri: <input type=\"text\" name=\"uri\" /><br/>"))
-	w.Write([]byte("</fieldset>"))
-	w.Write([]byte("<fieldset>"))
-	w.Write([]byte("<legend>User</legend>"))
-	w.Write([]byte("Email: <input type=\"email\" name=\"email\" /><br/>"))
+	w.Write([]byte("App Name: <input type=\"text\" name=\"usr_name\" /><br/>"))
+	w.Write([]byte("App Redirect Uri: <input type=\"text\" name=\"uri\" /><br/>"))
+	w.Write([]byte(fmt.Sprintf("<br/><br/>"+scopeItem+" Request upload of data on behalf <br />", scopeUpload, scopeUpload)))
+	w.Write([]byte(fmt.Sprintf(scopeItem+" Request viewing of data <br />", scopeView, scopeView)))
+	w.Write([]byte(fmt.Sprintf(scopeItem+" Request commenting on data <br />", scopeNote, scopeNote)))
+	w.Write([]byte("<br/><br/>Email: <input type=\"email\" name=\"email\" /><br/>"))
 	w.Write([]byte("Password: <input type=\"password\" name=\"password\" /><br/>"))
-	w.Write([]byte("</fieldset>"))
-	w.Write([]byte("<fieldset>"))
-	w.Write([]byte("<legend>Scope</legend>"))
-	w.Write([]byte(fmt.Sprintf(scopeItem+" Allow Upload on behalf <br />", scopeUpload, scopeUpload)))
-	w.Write([]byte(fmt.Sprintf(scopeItem+" Allow Viewing of data <br />", scopeView, scopeView)))
-	w.Write([]byte(fmt.Sprintf(scopeItem+" Allow Commenting on data <br />", scopeNote, scopeNote)))
-	w.Write([]byte("<input type=\"submit\"/>"))
+	w.Write([]byte("<br/><br/><input type=\"submit\"/>"))
 	w.Write([]byte("</fieldset>"))
 	w.Write([]byte("</form>"))
 	w.Write([]byte("</body></html>"))
@@ -215,6 +209,8 @@ func (o *OAuthApi) authorize(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Print("authorize: logged in so finish the auth request")
 		log.Printf("authorize: the valid request %v", ar)
+		//TODO:
+		//set the permissons for user logining in to app requesting rights
 		ar.Authorized = true
 		o.oauthServer.FinishAuthorizeRequest(resp, r, ar)
 	}
@@ -231,6 +227,8 @@ func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWri
 	if r.Method == "POST" && r.Form.Get("login") != "" && r.Form.Get("password") != "" {
 		log.Print("handleLoginPage: do the login")
 
+		//TODO: handle bad credentials
+
 		if usr, _, err := o.userApi.Login(r.Form.Get("login"), r.Form.Get("password")); err != nil {
 			log.Printf("handleLoginPage: err during account login: %s", err.Error())
 		} else if err == nil && usr == nil {
@@ -243,9 +241,11 @@ func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWri
 	}
 	log.Print("handleLoginPage: show login form")
 	w.Write([]byte("<html><body>"))
-	w.Write([]byte("LOGIN <br/>"))
+	w.Write([]byte("Login to grant access to Tidepool <br/>"))
 	w.Write([]byte(fmt.Sprintf("<form action="+authPostAction+" method=\"POST\">",
 		ar.Type, ar.Client.GetId(), ar.State, ar.Scope, url.QueryEscape(ar.RedirectUri))))
+
+	//TODO show the permissons that will be granted
 
 	w.Write([]byte("Email: <input type=\"text\" name=\"login\" /><br/>"))
 	w.Write([]byte("Password: <input type=\"password\" name=\"password\" /><br/>"))
