@@ -33,6 +33,8 @@ func (o *OAuthClient) code(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 
+	log.Printf("OAuthClient: all form data %v", r.Form)
+
 	code := r.Form.Get("code")
 
 	log.Printf("OAuthClient: code from form %s", code)
@@ -49,20 +51,20 @@ func (o *OAuthClient) code(w http.ResponseWriter, r *http.Request) {
 	jr := make(map[string]interface{})
 
 	// build access code url
-	aurl := fmt.Sprintf("/oauth/v1/token?grant_type=authorization_code&client_id=bce1c015eb&client_secret=78c4dbf65a60013f70de0bbbd00e1a7cfa5673c9&redirect_uri=%s&code=%s",
+	aurl := fmt.Sprintf("/oauth/v1/token?grant_type=authorization_code&client_id=8de198a3f9&client_secret=85873b9245451ecc375c6ecd465de2db0a916166&redirect_uri=%s&code=%s",
 		url.QueryEscape("http://localhost:14000/client/appauth/code"), url.QueryEscape(code))
 
 	log.Printf("OAuthClient: auth url %s", aurl)
 
 	// if parse, download and parse json
-	if r.Form.Get("doparse") == "1" {
-		err := downloadAccessToken(fmt.Sprintf("http://localhost:8009%s", aurl),
-			&osin.BasicAuth{"bce1c015eb", "78c4dbf65a60013f70de0bbbd00e1a7cfa5673c9"}, jr)
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			w.Write([]byte("<br/>"))
-		}
+	//if r.Form.Get("doparse") == "1" {
+	err := downloadAccessToken(fmt.Sprintf("http://localhost:8009%s", aurl),
+		&osin.BasicAuth{"8de198a3f9", "85873b9245451ecc375c6ecd465de2db0a916166"}, jr)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+		w.Write([]byte("<br/>"))
 	}
+	//}
 
 	log.Printf("OAuthClient: details %v ", jr)
 
@@ -92,7 +94,7 @@ func (o *OAuthClient) app(w http.ResponseWriter, r *http.Request) {
 	log.Print("OAuthClient: app login")
 
 	w.Write([]byte("<html><body>"))
-	w.Write([]byte(fmt.Sprintf("<a href=\"http://localhost:8009/oauth/v1/authorize?response_type=code&client_id=bce1c015eb&scope=view&redirect_uri=%s\">Login</a><br/>", url.QueryEscape("http://localhost:14000/client/appauth/code"))))
+	w.Write([]byte(fmt.Sprintf("<a href=\"http://localhost:8009/oauth/v1/authorize?response_type=code&client_id=8de198a3f9&scope=view&redirect_uri=%s\">Tidepool Login</a><br/>", url.QueryEscape("http://localhost:14000/client/appauth/code"))))
 	w.Write([]byte("</body></html>"))
 }
 
