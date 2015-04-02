@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/url"
+	"strings"
 	"testing"
 
 	tpClients "github.com/tidepool-org/go-common/clients"
@@ -64,6 +65,28 @@ func Test_applyPermissons(t *testing.T) {
 
 	if done == false {
 		t.Fatal("applyPermissons should have returned true on success")
+	}
+
+}
+
+func Test_makeScopeOption(t *testing.T) {
+
+	option := makeScopeOption(scopeUpload)
+
+	if option == "" {
+		t.Fatal("makeScopeOption returned something")
+	}
+
+	if strings.Contains(option, "type=\"checkbox\"") == false {
+		t.Fatal("makeScopeOption should be a checkbox")
+	}
+
+	if strings.Contains(option, scopeUpload.name) == false {
+		t.Fatal("makeScopeOptionshould include the scope  name")
+	}
+
+	if strings.Contains(option, scopeUpload.detail) == false {
+		t.Fatal("makeScopeOption should include the scope detail")
 	}
 
 }
