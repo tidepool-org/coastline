@@ -33,7 +33,10 @@ Make a note of both your client_id and client_secret.
 
 First, direct your user to ``http://localhost:8009/oauth/v1/authorize`` through a ``GET`` request with the following parameters:
 
-### Parameters: For GET, include them as query parameters, please URL encode the parameters.
+### Parameters:
+
+For ``GET`` include them as query parameters remembering to please URL encode the parameters.
+
 * response_type
   * required  Whether the endpoint returns an authorization code. For web applications, a value of ``code`` should be used.
 * client_id
