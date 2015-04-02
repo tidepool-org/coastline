@@ -33,7 +33,17 @@ type (
 		OAuthConfig
 	}
 	//scope Enum type's
-	scope string
+	//scope string
+
+	scope struct {
+		name, detail string
+	}
+)
+
+var (
+	//Available scopes's
+	scopeView   scope = scope{name: "view", detail: "Request uploading of data"}
+	scopeUpload scope = scope{name: "upload", detail: "Request viewing of data"}
 )
 
 const (
@@ -41,15 +51,8 @@ const (
 	error_signup_details = "sorry but look like something was wrong with your signup details!"
 
 	oneDayInSecs = 86400
-
-	//Available scopes's
-	scopeView   scope = "view"
-	scopeUpload scope = "upload"
-	scopeNote   scope = "note"
-
 	//TODO: get prefix from router??
 	authPostAction = "/oauth/v1/authorize?response_type=%s&client_id=%s&state=%s&scope=%s&redirect_uri=%s"
-	scopeItem      = "<input type=\"checkbox\" name=\"%s\" value=\"%s\" />"
 )
 
 func InitOAuthApi(cfg OAuthConfig, s *clients.TestStorage, userApi shoreline.Client, permsApi tpClients.Gatekeeper) *OAuthApi {
@@ -98,15 +101,18 @@ func (o *OAuthApi) signupShow(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("<legend>Application</legend>"))
 	w.Write([]byte("App Name: <input type=\"text\" name=\"usr_name\" /><br/>"))
 	w.Write([]byte("App Redirect Uri: <input type=\"text\" name=\"uri\" /><br/>"))
-	w.Write([]byte(fmt.Sprintf("<br/><br/>"+scopeItem+" Request upload of data on behalf <br />", scopeUpload, scopeUpload)))
-	w.Write([]byte(fmt.Sprintf(scopeItem+" Request viewing of data <br />", scopeView, scopeView)))
-	w.Write([]byte(fmt.Sprintf(scopeItem+" Request commenting on data <br />", scopeNote, scopeNote)))
+	w.Write([]byte("<br/><br/>" + makeScopeOption(scopeUpload) + "<br />"))
+	w.Write([]byte(makeScopeOption(scopeView) + " <br />"))
 	w.Write([]byte("<br/><br/>Email: <input type=\"email\" name=\"email\" /><br/>"))
 	w.Write([]byte("Password: <input type=\"password\" name=\"password\" /><br/>"))
 	w.Write([]byte("<br/><br/><input type=\"submit\"/>"))
 	w.Write([]byte("</fieldset>"))
 	w.Write([]byte("</form>"))
 	w.Write([]byte("</body></html>"))
+}
+
+func makeScopeOption(theScope scope) string {
+	return fmt.Sprintf("<input type=\"checkbox\" name=\"%s\" value=\"%s\" /> %s", theScope.name, theScope.name, theScope.detail)
 }
 
 //check we have all the fields we require
@@ -122,14 +128,11 @@ func signupScope(formData url.Values) string {
 
 	scopes := []string{}
 
-	if formData.Get(string(scopeView)) != "" {
-		scopes = append(scopes, string(scopeView))
+	if formData.Get(scopeView.name) != "" {
+		scopes = append(scopes, scopeView.name)
 	}
-	if formData.Get(string(scopeUpload)) != "" {
-		scopes = append(scopes, string(scopeUpload))
-	}
-	if formData.Get(string(scopeNote)) != "" {
-		scopes = append(scopes, string(scopeNote))
+	if formData.Get(scopeUpload.name) != "" {
+		scopes = append(scopes, scopeUpload.name)
 	}
 
 	return strings.Join(scopes, ",")
@@ -268,12 +271,19 @@ func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWri
 		return ""
 	}
 	log.Print("handleLoginPage: show login form")
+	//TODO: as a template
 	w.Write([]byte("<html><body>"))
 	w.Write([]byte("Login to grant access to Tidepool <br/>"))
 	w.Write([]byte(fmt.Sprintf("<form action="+authPostAction+" method=\"POST\">",
 		ar.Type, ar.Client.GetId(), ar.State, ar.Scope, url.QueryEscape(ar.RedirectUri))))
 
-	//TODO show the permissons that will be granted
+	w.Write([]byte("With access to your Tidepool account this app can <br/><br/>"))
+	if strings.Contains(ar.Scope, scopeView.name) {
+		w.Write([]byte(scopeView.detail + " <br/>"))
+	}
+	if strings.Contains(ar.Scope, scopeUpload.name) {
+		w.Write([]byte(scopeUpload.detail + " <br/>"))
+	}
 
 	w.Write([]byte("Email: <input type=\"text\" name=\"login\" /><br/>"))
 	w.Write([]byte("Password: <input type=\"password\" name=\"password\" /><br/>"))

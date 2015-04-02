@@ -10,12 +10,12 @@ import (
 func Test_signupScope(t *testing.T) {
 
 	formData := make(url.Values)
-	formData[string(scopeView)] = []string{string(scopeView)}
-	formData[string(scopeUpload)] = []string{string(scopeUpload)}
+	formData[scopeView.name] = []string{scopeView.name}
+	formData[scopeUpload.name] = []string{scopeUpload.name}
 
 	scope := signupScope(formData)
 
-	expectedScope := string(scopeView) + "," + string(scopeUpload)
+	expectedScope := scopeView.name + "," + scopeUpload.name
 
 	if scope != expectedScope {
 		t.Fatalf("got %s expected %s", scope, expectedScope)
