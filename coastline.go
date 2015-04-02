@@ -66,15 +66,21 @@ func main() {
 	WithConfig(&config.HighwaterConfig.HighwaterClientConfig).
 	Build()*/
 
-	shoreline := shoreline.NewShorelineClientBuilder().
+	user := shoreline.NewShorelineClientBuilder().
 		WithHostGetter(config.ShorelineConfig.ToHostGetter(hakkenClient)).
 		WithHttpClient(httpClient).
 		WithConfig(&config.ShorelineConfig.ShorelineClientConfig).
 		Build()
 
-	if err := shoreline.Start(); err != nil {
+	if err := user.Start(); err != nil {
 		log.Fatal(err)
 	}
+
+	perms := clients.NewGatekeeperClientBuilder().
+		WithHostGetter(config.GatekeeperConfig.ToHostGetter(hakkenClient)).
+		WithHttpClient(httpClient).
+		WithTokenProvider(user).
+		Build()
 
 	/*
 		 *  Mongo session for use
@@ -95,7 +101,7 @@ func main() {
 	/*
 	 * Oauth2 setup
 	 */
-	oauthApi := api.InitOAuthApi(api.OAuthConfig{Salt: config.Api.Salt}, sc.NewTestStorage(), shoreline)
+	oauthApi := api.InitOAuthApi(api.OAuthConfig{Salt: config.Api.Salt}, sc.NewTestStorage(), user, perms)
 	oauthApi.SetHandlers("", rtr)
 
 	/*

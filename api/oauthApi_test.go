@@ -3,6 +3,8 @@ package api
 import (
 	"net/url"
 	"testing"
+
+	tpClients "github.com/tidepool-org/go-common/clients"
 )
 
 func Test_signupScope(t *testing.T) {
@@ -48,6 +50,20 @@ func Test_signupFormValid_false(t *testing.T) {
 
 	if valid {
 		t.Fatalf("form %v should NOT be valid", formData)
+	}
+
+}
+
+func Test_applyPermissons(t *testing.T) {
+
+	mockPerms := tpClients.NewGatekeeperMock(nil, nil)
+
+	api := OAuthApi{permsApi: mockPerms}
+
+	done := api.applyPermissons("123", "456", "view,upload")
+
+	if done == false {
+		t.Fatal("applyPermissons should have returned true on success")
 	}
 
 }

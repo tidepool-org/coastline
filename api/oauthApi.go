@@ -13,6 +13,7 @@ import (
 
 	"github.com/RangelReale/osin"
 	"github.com/gorilla/mux"
+	tpClients "github.com/tidepool-org/go-common/clients"
 	"github.com/tidepool-org/go-common/clients/shoreline"
 
 	"../clients"
@@ -28,6 +29,7 @@ type (
 		oauthServer *osin.Server
 		storage     *clients.TestStorage
 		userApi     shoreline.Client
+		permsApi    tpClients.Gatekeeper
 		OAuthConfig
 	}
 	//scope Enum type's
@@ -50,7 +52,7 @@ const (
 	scopeItem      = "<input type=\"checkbox\" name=\"%s\" value=\"%s\" />"
 )
 
-func InitOAuthApi(cfg OAuthConfig, s *clients.TestStorage, userApi shoreline.Client) *OAuthApi {
+func InitOAuthApi(cfg OAuthConfig, s *clients.TestStorage, userApi shoreline.Client, permsApi tpClients.Gatekeeper) *OAuthApi {
 
 	log.Print("OAuthApi setting up ...")
 
@@ -62,6 +64,7 @@ func InitOAuthApi(cfg OAuthConfig, s *clients.TestStorage, userApi shoreline.Cli
 		storage:     s,
 		oauthServer: osin.NewServer(sconfig, s),
 		userApi:     userApi,
+		permsApi:    permsApi,
 		OAuthConfig: cfg,
 	}
 }
@@ -130,6 +133,28 @@ func signupScope(formData url.Values) string {
 	}
 
 	return strings.Join(scopes, ",")
+}
+
+func (o *OAuthApi) applyPermissons(authorizingUserId, appUserId, scope string) bool {
+
+	scopes := strings.Split(scope, ",")
+	permsToApply := make(tpClients.Permissions)
+
+	for i := range scopes {
+		detail := make(map[string]interface{})
+		detail["userid"] = appUserId
+		permsToApply[scopes[i]] = detail
+	}
+
+	log.Printf("applyPermissons: permissons to apply %v", permsToApply)
+
+	if err, appliedPerms := o.permsApi.SetPermissions(appUserId, authorizingUserId, permsToApply); err != nil {
+		log.Printf("applyPermissons: err setting the permissons %v", err)
+		return false
+	} else {
+		log.Printf("applyPermissons: permissons %v set", appliedPerms)
+		return true
+	}
 }
 
 /*
@@ -204,15 +229,16 @@ func (o *OAuthApi) authorize(w http.ResponseWriter, r *http.Request) {
 	log.Print("authorize: off to handle auth request")
 	if ar := o.oauthServer.HandleAuthorizeRequest(resp, r); ar != nil {
 		log.Print("authorize: lets do the user login")
-		if !o.handleLoginPage(ar, w, r) {
+		if loggedInId := o.handleLoginPage(ar, w, r); loggedInId == "" {
+			log.Print("authorize: no joy trying to login to tidepool!! ")
 			return
+		} else {
+			log.Print("authorize: logged in so finish the auth request")
+			log.Printf("authorize: the valid request %v", ar)
+			o.applyPermissons(loggedInId, ar.Client.GetId(), ar.Scope)
+			ar.Authorized = true
+			o.oauthServer.FinishAuthorizeRequest(resp, r, ar)
 		}
-		log.Print("authorize: logged in so finish the auth request")
-		log.Printf("authorize: the valid request %v", ar)
-		//TODO:
-		//set the permissons for user logining in to app requesting rights
-		ar.Authorized = true
-		o.oauthServer.FinishAuthorizeRequest(resp, r, ar)
 	}
 	if resp.IsError && resp.InternalError != nil {
 		log.Print("authorize: stink bro it's all gone pete tong")
@@ -222,7 +248,7 @@ func (o *OAuthApi) authorize(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWriter, r *http.Request) bool {
+func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWriter, r *http.Request) string {
 	r.ParseForm()
 	if r.Method == "POST" && r.Form.Get("login") != "" && r.Form.Get("password") != "" {
 		log.Print("handleLoginPage: do the login")
@@ -234,10 +260,10 @@ func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWri
 		} else if err == nil && usr == nil {
 			log.Print("handleLoginPage: tidepool login failed as nothing was found")
 		} else if usr != nil {
-			log.Print("handleLoginPage: tidepool login success")
-			return true
+			log.Printf("handleLoginPage: tidepool login success [%s] ", usr.UserID)
+			return usr.UserID
 		}
-		return false
+		return ""
 	}
 	log.Print("handleLoginPage: show login form")
 	w.Write([]byte("<html><body>"))
@@ -253,7 +279,7 @@ func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWri
 	w.Write([]byte("</form>"))
 	w.Write([]byte("</body></html>"))
 
-	return false
+	return ""
 }
 
 // Access token endpoint
