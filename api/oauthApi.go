@@ -137,22 +137,21 @@ func signupScope(formData url.Values) string {
 
 func (o *OAuthApi) applyPermissons(authorizingUserId, appUserId, scope string) bool {
 
+	var empty struct{}
 	scopes := strings.Split(scope, ",")
 	permsToApply := make(tpClients.Permissions)
 
 	for i := range scopes {
-		detail := make(map[string]interface{})
-		detail["userid"] = appUserId
-		permsToApply[scopes[i]] = detail
+		permsToApply[scopes[i]] = empty
 	}
 
 	log.Printf("applyPermissons: permissons to apply %v", permsToApply)
 
-	if err, appliedPerms := o.permsApi.SetPermissions(appUserId, authorizingUserId, permsToApply); err != nil {
-		log.Printf("applyPermissons: err setting the permissons %v", err)
+	if appliedPerms, err := o.permsApi.SetPermissions(appUserId, authorizingUserId, permsToApply); err != nil {
+		log.Printf("applyPermissons: err %v setting the permissons %v", err, appliedPerms)
 		return false
 	} else {
-		log.Printf("applyPermissons: permissons %v set", appliedPerms)
+		log.Printf("applyPermissons: permissons %v set", permsToApply)
 		return true
 	}
 }
@@ -235,9 +234,12 @@ func (o *OAuthApi) authorize(w http.ResponseWriter, r *http.Request) {
 		} else {
 			log.Print("authorize: logged in so finish the auth request")
 			log.Printf("authorize: the valid request %v", ar)
-			o.applyPermissons(loggedInId, ar.Client.GetId(), ar.Scope)
-			ar.Authorized = true
-			o.oauthServer.FinishAuthorizeRequest(resp, r, ar)
+			if o.applyPermissons(loggedInId, ar.Client.GetId(), ar.Scope) {
+				ar.Authorized = true
+				o.oauthServer.FinishAuthorizeRequest(resp, r, ar)
+			} else {
+				log.Print("ERROR: authorize failed to apply the permissons")
+			}
 		}
 	}
 	if resp.IsError && resp.InternalError != nil {
