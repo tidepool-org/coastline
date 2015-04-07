@@ -1,12 +1,11 @@
 package clients
 
 import (
-	"log"
+	//"log"
 	"testing"
 
 	"github.com/RangelReale/osin"
 	"github.com/tidepool-org/go-common/clients/mongo"
-	"labix.org/v2/mgo"
 )
 
 var (
@@ -17,32 +16,23 @@ var (
 	}
 
 	auth_data = &osin.AuthorizeData{
-		Code:     "12+34",
-		Scope:    "view",
-		UserData: *a_client,
+		Code:   "12+34",
+		Scope:  "view",
+		Client: a_client,
 	}
 
 	access_data = &osin.AccessData{
 		AccessToken: "4321",
-		UserData:    *a_client,
+		Client:      a_client,
 		Scope:       "upload,view",
 	}
 
 	testingConfig = &mongo.Config{ConnectionString: "mongodb://localhost/oauth_test"}
 )
 
-func loadSession() *mgo.Session {
-	mongoSession, err := mongo.Connect(testingConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return mongoSession
-}
-
 func TestOAuth_ClientStorage(t *testing.T) {
 
-	session := loadSession()
-	os := NewOAuthStorage(session)
+	os := NewOAuthStorage(testingConfig)
 
 	/*
 	 * INIT THE TEST - we use a clean copy of the collection before we start
@@ -67,8 +57,7 @@ func TestOAuth_ClientStorage(t *testing.T) {
 
 func TestOAuth_AccessStorage(t *testing.T) {
 
-	session := loadSession()
-	os := NewOAuthStorage(session)
+	os := NewOAuthStorage(testingConfig)
 
 	/*
 	 * INIT THE TEST - we use a clean copy of the collection before we start
@@ -93,8 +82,7 @@ func TestOAuth_AccessStorage(t *testing.T) {
 
 func TestOAuth_AuthorizeStorage(t *testing.T) {
 
-	session := loadSession()
-	os := NewOAuthStorage(session)
+	os := NewOAuthStorage(testingConfig)
 
 	/*
 	 * INIT THE TEST - we use a clean copy of the collection before we start
