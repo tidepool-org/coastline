@@ -27,7 +27,7 @@ type (
 	}
 	OAuthApi struct {
 		oauthServer *osin.Server
-		storage     *clients.TestStorage
+		storage     *clients.OAuthStorage
 		userApi     shoreline.Client
 		permsApi    tpClients.Gatekeeper
 		OAuthConfig
@@ -55,7 +55,7 @@ const (
 	authPostAction = "/oauth/v1/authorize?response_type=%s&client_id=%s&state=%s&scope=%s&redirect_uri=%s"
 )
 
-func InitOAuthApi(cfg OAuthConfig, s *clients.TestStorage, userApi shoreline.Client, permsApi tpClients.Gatekeeper) *OAuthApi {
+func InitOAuthApi(cfg OAuthConfig, s *clients.OAuthStorage, userApi shoreline.Client, permsApi tpClients.Gatekeeper) *OAuthApi {
 
 	log.Print("OAuthApi setting up ...")
 
@@ -186,16 +186,16 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 
 				secret, _ := models.GeneratePasswordHash(usr["userid"], "", o.OAuthConfig.Salt)
 
-				clientUsr := &osin.DefaultClient{
+				theClient := &osin.DefaultClient{
 					Id:          usr["userid"],
 					Secret:      secret,
 					RedirectUri: r.Form.Get("uri"),
 				}
 
 				authData := &osin.AuthorizeData{
-					UserData:    clientUsr,
+					Client:      theClient,
 					Scope:       signupScope(r.Form),
-					RedirectUri: clientUsr.RedirectUri,
+					RedirectUri: theClient.RedirectUri,
 					ExpiresIn:   int32(o.OAuthConfig.ExpireDays * oneDayInSecs),
 					CreatedAt:   time.Now(),
 				}
@@ -204,9 +204,9 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 				log.Printf("signup: with auth data %v", authData)
 				o.storage.SaveAuthorize(authData)
 
-				w.Write([]byte(fmt.Sprintf("signup: created app account!! %v", clientUsr)))
-				log.Printf("signup: created app account!! %v", clientUsr)
-				o.storage.SetClient(clientUsr.GetId(), clientUsr)
+				w.Write([]byte(fmt.Sprintf("signup: created app account!! %v", authData.Client)))
+				log.Printf("signup: created app account!! %v", authData.Client)
+				o.storage.SetClient(authData.Client.GetId(), authData.Client)
 			} else {
 				//Not what we hoped for so lets report it!
 				w.Write([]byte(fmt.Sprintf("signup: issue during signup %b %s", signupResp.StatusCode, signupResp.Status)))
