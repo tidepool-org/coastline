@@ -82,7 +82,7 @@ func Test_makeScopeOption(t *testing.T) {
 	}
 
 	if strings.Contains(option, scopeUpload.name) == false {
-		t.Fatal("makeScopeOptionshould include the scope  name")
+		t.Fatal("makeScopeOption should include the scope name")
 	}
 
 	if strings.Contains(option, scopeUpload.detail) == false {
