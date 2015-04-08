@@ -32,9 +32,7 @@ type (
 		permsApi    tpClients.Gatekeeper
 		OAuthConfig
 	}
-	//scope Enum type's
-	//scope string
-
+	//scope that maps to a tidepool permisson
 	scope struct {
 		name, detail string
 	}
@@ -55,7 +53,11 @@ const (
 	authPostAction = "/oauth/v1/authorize?response_type=%s&client_id=%s&state=%s&scope=%s&redirect_uri=%s"
 )
 
-func InitOAuthApi(cfg OAuthConfig, s *clients.OAuthStorage, userApi shoreline.Client, permsApi tpClients.Gatekeeper) *OAuthApi {
+func InitOAuthApi(
+	config OAuthConfig,
+	storage *clients.OAuthStorage,
+	userApi shoreline.Client,
+	permsApi tpClients.Gatekeeper) *OAuthApi {
 
 	log.Print("OAuthApi setting up ...")
 
@@ -64,11 +66,11 @@ func InitOAuthApi(cfg OAuthConfig, s *clients.OAuthStorage, userApi shoreline.Cl
 	sconfig.AllowClientSecretInParams = true
 
 	return &OAuthApi{
-		storage:     s,
-		oauthServer: osin.NewServer(sconfig, s),
+		storage:     storage,
+		oauthServer: osin.NewServer(sconfig, storage),
 		userApi:     userApi,
 		permsApi:    permsApi,
-		OAuthConfig: cfg,
+		OAuthConfig: config,
 	}
 }
 
@@ -83,10 +85,6 @@ func (o *OAuthApi) SetHandlers(prefix string, rtr *mux.Router) {
 	rtr.HandleFunc(prefix+"/info", o.info).Methods("GET")
 
 }
-
-/*
- * Tidepool OAuth to allow
- */
 
 /*
  * Show the signup from so an external user can signup to the tidepool platform
@@ -171,6 +169,7 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("signup: details for new user [%s]", string(signupData[:]))
 
+		//TODO: add call to go-common
 		if signupResp, err := http.Post("http://localhost:8009/auth/user", "application/json", bytes.NewBuffer(signupData)); err != nil {
 			w.Write([]byte(fmt.Sprintf("err during app account signup: %s", err.Error())))
 		} else {
@@ -200,17 +199,26 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 					CreatedAt:   time.Now(),
 				}
 
-				w.Write([]byte(fmt.Sprintf("signup: with auth data %v", authData)))
-				log.Printf("signup: with auth data %v", authData)
+				log.Printf("signup: AuthorizeData %v", authData)
 				o.storage.SaveAuthorize(authData)
-
-				w.Write([]byte(fmt.Sprintf("signup: created app account!! %v", authData.Client)))
-				log.Printf("signup: created app account!! %v", authData.Client)
 				o.storage.SetClient(authData.Client.GetId(), authData.Client)
+				//Inform of the results
+				signedUpIdMsg := fmt.Sprintf("ClientId:  client_id=%s", authData.Client.GetId())
+				signedUpSecretMsg := fmt.Sprintf("ClientSecret: client_secret=%s", authData.Client.GetSecret())
+				w.Write([]byte("Your account has been ceated"))
+				w.Write([]byte("<br/>"))
+				w.Write([]byte(signedUpIdMsg))
+				w.Write([]byte("<br/>"))
+				w.Write([]byte(signedUpSecretMsg))
+
+				log.Printf("signup: client %v", authData.Client)
+				log.Print("signup: " + signedUpIdMsg)
+				log.Print("signup: " + signedUpSecretMsg)
 			} else {
 				//Not what we hoped for so lets report it!
-				w.Write([]byte(fmt.Sprintf("signup: issue during signup %b %s", signupResp.StatusCode, signupResp.Status)))
-				log.Printf("signup: issue during signup %b %s", signupResp.StatusCode, signupResp.Status)
+				signupFailedMsg := fmt.Sprintf("Sorry there was an issue during signup. Code [%b] Status [%s]", signupResp.StatusCode, signupResp.Status)
+				w.Write([]byte(signupFailedMsg))
+				log.Print("signup: " + signupFailedMsg)
 			}
 		}
 
@@ -238,6 +246,7 @@ func (o *OAuthApi) authorize(w http.ResponseWriter, r *http.Request) {
 			log.Print("authorize: logged in so finish the auth request")
 			log.Printf("authorize: the valid request %v", ar)
 			if o.applyPermissons(loggedInId, ar.Client.GetId(), ar.Scope) {
+				log.Printf("authorize: applyPermissons [%s] to userid [%s]", ar.Scope, loggedInId)
 				ar.Authorized = true
 				o.oauthServer.FinishAuthorizeRequest(resp, r, ar)
 			} else {
@@ -250,7 +259,6 @@ func (o *OAuthApi) authorize(w http.ResponseWriter, r *http.Request) {
 		log.Printf("ERROR: %s\n", resp.InternalError)
 	}
 	osin.OutputJSON(resp, w, r)
-
 }
 
 func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWriter, r *http.Request) string {
@@ -273,7 +281,7 @@ func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWri
 	log.Print("handleLoginPage: show login form")
 	//TODO: as a template
 	w.Write([]byte("<html><body>"))
-	w.Write([]byte("Login to grant access to Tidepool <br/>"))
+
 	w.Write([]byte(fmt.Sprintf("<form action="+authPostAction+" method=\"POST\">",
 		ar.Type, ar.Client.GetId(), ar.State, ar.Scope, url.QueryEscape(ar.RedirectUri))))
 
@@ -284,7 +292,7 @@ func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWri
 	if strings.Contains(ar.Scope, scopeUpload.name) {
 		w.Write([]byte(scopeUpload.detail + " <br/>"))
 	}
-
+	w.Write([]byte("Login to grant these permissons to your Tidepool account <br/>"))
 	w.Write([]byte("Email: <input type=\"text\" name=\"login\" /><br/>"))
 	w.Write([]byte("Password: <input type=\"password\" name=\"password\" /><br/>"))
 	w.Write([]byte("<input type=\"submit\"/>"))
