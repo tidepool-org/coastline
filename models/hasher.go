@@ -6,18 +6,17 @@ import (
 	"errors"
 )
 
-func GeneratePasswordHash(id, pw, salt string) (string, error) {
+func GenerateHash(args ...string) (string, error) {
 
-	if salt == "" || id == "" {
-		return "", errors.New("id and salt are required")
+	if len(args) < 3 {
+		return "", errors.New("we need at least three strings to create the hash")
 	}
 
 	hash := sha1.New()
-	if pw != "" {
-		hash.Write([]byte(pw))
+
+	for i := range args {
+		hash.Write([]byte(args[i]))
 	}
-	hash.Write([]byte(salt))
-	hash.Write([]byte(id))
 	pwHash := hex.EncodeToString(hash.Sum(nil))
 
 	return pwHash, nil

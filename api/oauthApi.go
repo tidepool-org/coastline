@@ -183,7 +183,7 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 
 				log.Printf("tidepool account %v", usr)
 
-				secret, _ := models.GeneratePasswordHash(usr["userid"], "", o.OAuthConfig.Salt)
+				secret, _ := models.GenerateHash(usr["userid"], r.Form.Get("uri"), time.Now().String())
 
 				theClient := &osin.DefaultClient{
 					Id:          usr["userid"],

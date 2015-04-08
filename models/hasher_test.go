@@ -4,44 +4,28 @@ import (
 	"testing"
 )
 
-func TestGeneratePasswordHash_NoId(t *testing.T) {
+func TestGenerateHash_NotEnoughArgs(t *testing.T) {
 
-	if _, err := GeneratePasswordHash("", "th3P0rd", "some salt"); err == nil {
-		t.Fatal("there should be an error when no id is given")
+	if _, err := GenerateHash("stuff", "th3P0rd"); err == nil {
+		t.Fatal("there should be an error not enough data is given")
 	}
 
 }
 
-func TestGeneratePasswordHash_NoPw(t *testing.T) {
+func TestGenerateHash(t *testing.T) {
 
-	if _, err := GeneratePasswordHash("1234", "", "some salt"); err != nil {
-		t.Fatal("there should NOT be an error when no pw is given")
-	}
-
-}
-
-func TestGeneratePasswordHash_NoSalt(t *testing.T) {
-
-	if _, err := GeneratePasswordHash("1234", "th3P0rd", ""); err == nil {
-		t.Fatal("there should be an error when no pw is given")
-	}
-
-}
-
-func TestGeneratePasswordHash(t *testing.T) {
-
-	if pwHashed, err := GeneratePasswordHash("1234", "th3P0rd", "some salt"); err != nil {
+	if pwHashed, err := GenerateHash("1234", "th3P0rd", "some salt", "6789"); err != nil {
 		t.Fatal("there should be an error when no pw is given")
 	} else {
-		reHashed, _ := GeneratePasswordHash("1234", "th3P0rd", "some salt")
+		reHashed, _ := GenerateHash("1234", "th3P0rd", "some salt", "6789")
 
 		if pwHashed != reHashed {
 			t.Fatal("the two hash's should match")
 		}
 
-		badHashed, _ := GeneratePasswordHash("1235", "th3P0rd", "some salt")
+		otherHash, _ := GenerateHash("1235", "th3P0rd", "some salt", "6789")
 
-		if pwHashed == badHashed {
+		if pwHashed == otherHash {
 			t.Fatal("the two hash's should NOT match as they have different userid's")
 		}
 	}
