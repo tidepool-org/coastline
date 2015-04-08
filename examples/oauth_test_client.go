@@ -57,14 +57,14 @@ func (o *OAuthClient) code(w http.ResponseWriter, r *http.Request) {
 	log.Printf("OAuthClient: auth url %s", aurl)
 
 	// if parse, download and parse json
-	//if r.Form.Get("doparse") == "1" {
-	err := downloadAccessToken(fmt.Sprintf("http://localhost:8009%s", aurl),
-		&osin.BasicAuth{"ff2245581b", "c68768e60d41f8ad3bdaef987db3330b3de60d10"}, jr)
-	if err != nil {
-		w.Write([]byte(err.Error()))
-		w.Write([]byte("<br/>"))
+	if r.Form.Get("doparse") == "1" {
+		err := downloadAccessToken(fmt.Sprintf("http://localhost:8009%s", aurl),
+			&osin.BasicAuth{"ff2245581b", "c68768e60d41f8ad3bdaef987db3330b3de60d10"}, jr)
+		if err != nil {
+			w.Write([]byte(err.Error()))
+			w.Write([]byte("<br/>"))
+		}
 	}
-	//}
 
 	log.Printf("OAuthClient: details %v ", jr)
 
