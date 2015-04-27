@@ -13,7 +13,6 @@ import (
 	"github.com/tidepool-org/go-common/clients"
 	"github.com/tidepool-org/go-common/clients/disc"
 	"github.com/tidepool-org/go-common/clients/hakken"
-	//"github.com/tidepool-org/go-common/clients/highwater"
 	"github.com/tidepool-org/go-common/clients/mongo"
 	"github.com/tidepool-org/go-common/clients/shoreline"
 
@@ -58,12 +57,6 @@ func main() {
 	}
 
 	httpClient := &http.Client{Transport: tr}
-
-	/*highwater := highwater.NewHighwaterClientBuilder().
-	WithHostGetter(config.HighwaterConfig.ToHostGetter(hakkenClient)).
-	WithHttpClient(httpClient).
-	WithConfig(&config.HighwaterConfig.HighwaterClientConfig).
-	Build()*/
 
 	user := shoreline.NewShorelineClientBuilder().
 		WithHostGetter(config.ShorelineConfig.ToHostGetter(hakkenClient)).
