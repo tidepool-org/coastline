@@ -22,8 +22,7 @@ import (
 
 type (
 	OAuthConfig struct {
-		Salt       string `json:"salt"`
-		ExpireDays int    `json:"expireDays"`
+		ExpireDays int `json:"expireDays"`
 	}
 	OAuthApi struct {
 		oauthServer *osin.Server
@@ -50,7 +49,7 @@ const (
 
 	oneDayInSecs = 86400
 	//TODO: get prefix from router??
-	authPostAction = "/oauth/v1/authorize?response_type=%s&client_id=%s&state=%s&scope=%s&redirect_uri=%s"
+	authPostAction = "/oauth/authorize?response_type=%s&client_id=%s&state=%s&scope=%s&redirect_uri=%s"
 )
 
 func InitOAuthApi(

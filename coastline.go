@@ -16,7 +16,6 @@ import (
 	//"github.com/tidepool-org/go-common/clients/highwater"
 	"github.com/tidepool-org/go-common/clients/mongo"
 	"github.com/tidepool-org/go-common/clients/shoreline"
-	//"labix.org/v2/mgo"
 
 	"./api"
 	sc "./clients"
@@ -87,7 +86,7 @@ func main() {
 	/*
 	 * Oauth2 setup
 	 */
-	oauthApi := api.InitOAuthApi(api.OAuthConfig{Salt: config.Api.Salt}, sc.NewOAuthStorage(&config.Mongo), user, perms)
+	oauthApi := api.InitOAuthApi(sc.NewOAuthStorage(&config.Mongo), user, perms)
 	oauthApi.SetHandlers("", rtr)
 
 	/*
