@@ -69,7 +69,10 @@ const (
 	//TODO: get prefix from router??
 	authPostAction = "/oauth/authorize?response_type=%s&client_id=%s&state=%s&scope=%s&redirect_uri=%s"
 	//TODO: stop gap for styling
-	basicCss = "<style type=\"text/css\">body{margin:40px auto;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px}h1,h2,h3{line-height:1.2}input{width:80%%;height:37px;margin:5px;font-size:18px;padding:10px;}</style>"
+	btnCss   = "input[type=submit] {background:#0b9eb3; color: #fff}"
+	inputCss = "input{width:80%%;height:37px;margin:5px;font-size:18px;padding:10px;}"
+	mfwCss   = "body{margin:40px auto;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px}h1,h2,h3{line-height:1.2}"
+	basicCss = "<style type=\"text/css\"></style>"
 )
 
 func InitOAuthApi(
@@ -146,10 +149,15 @@ func signupScope(formData url.Values) string {
 
 func writeError(w http.ResponseWriter, errorMessage string) {
 	w.Write([]byte("<html>"))
-	w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
+	applyStyle(w)
 	w.Write([]byte("<body>"))
 	w.Write([]byte("<h4>" + errorMessage + "</h4>"))
 	w.Write([]byte("</body></html>"))
+}
+
+func applyStyle(w http.ResponseWriter) {
+	style := fmt.Sprintf("<head><style type=\"text/css\">%s%s%s</style></head>", mfwCss, inputCss, btnCss)
+	w.Write([]byte(style))
 }
 
 func (o *OAuthApi) applyPermissons(authorizingUserId, appUserId, scope string) bool {
@@ -180,7 +188,7 @@ func (o *OAuthApi) signupShow(w http.ResponseWriter, r *http.Request) {
 
 	//TODO: as a template
 	w.Write([]byte("<html>"))
-	w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
+	applyStyle(w)
 	w.Write([]byte("<body>"))
 	w.Write([]byte("<h2>Tidepool developer account signup</h2>"))
 	w.Write([]byte("<form action=\"\" method=\"POST\">"))
@@ -266,7 +274,7 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 				signedUpSecretMsg := fmt.Sprintf("client_secret=%s", theClient.Secret)
 
 				w.Write([]byte("<html>"))
-				w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
+				applyStyle(w)
 				w.Write([]byte("<body>"))
 				w.Write([]byte("<h2>" + msg_signup_complete + "</h2>"))
 				w.Write([]byte("<b>" + msg_signup_save_details + "</b>"))
@@ -347,7 +355,7 @@ func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWri
 	//TODO: as a template
 
 	w.Write([]byte("<html>"))
-	w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
+	applyStyle(w)
 	w.Write([]byte("<body>"))
 	w.Write([]byte("<h2>" + msg_tidepool_account_access + "</h2>"))
 	w.Write([]byte("<p>" + msg_tidepool_permissons_granted + "</p>"))
