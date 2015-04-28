@@ -36,6 +36,8 @@ Create a platform user
 
 Make a note of both your client_id and client_secret.
 
+![Signup](https://github.com/tidepool-org/coastline/tree/examples/signup.png)
+
 ### Notes:
 
 * What is a platfrom user?
