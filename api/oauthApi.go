@@ -39,26 +39,37 @@ type (
 
 var (
 	//Available scopes's
-	scopeView   scope = scope{name: "view", requestMsg: "Request uploading of data", grantMsg: "Allow uploading of data on your behalf"}
-	scopeUpload scope = scope{name: "upload", requestMsg: "Request viewing of data", grantMsg: "Allow viewing of data on your behalf"}
+	scopeView   scope = scope{name: "view", requestMsg: "Requests uploading of data on behalf", grantMsg: "Allow uploading of data on your behalf"}
+	scopeUpload scope = scope{name: "upload", requestMsg: "Requests viewing of data on behalf", grantMsg: "Allow viewing of data on your behalf"}
 )
 
 const (
 	//errors
 	error_signup_details           = "sorry but look like something was wrong with your signup details!"
+	error_signup_pw_match          = "sorry but your passwords don't match"
 	error_signup_account           = "sorry but there was an issue creating an account for your oauth2 user"
 	error_signup_account_duplicate = "sorry but there is already an account with those details"
-
+	error_generic                  = "sorry but there setting up your account, please contact support@tidepool.org"
+	//user message
 	msg_signup_complete             = "Your account has been created"
 	msg_signup_save_details         = "Please save these details"
-	msg_tidepool_account_access     = "Authorize access to your Tidepool account"
-	msg_tidepool_permissons_granted = "By logging in you will grant these permissons to your Tidepool account"
+	msg_tidepool_account_access     = "Login to grant access to Tidepool"
+	msg_tidepool_permissons_granted = "With access to your Tidepool account the app can:"
+	//form text
+	btn_authorize            = "Grant access to Tidepool"
+	btn_no_authorize         = "Deny access to Tidepool"
+	btn_signup               = "Signup"
+	placeholder_email        = "Email"
+	placeholder_pw           = "Password"
+	placeholder_pw_confirm   = "Confirm Password"
+	placeholder_redirect_uri = "Application redirect_uri"
+	placeholder_name         = "Application Name"
 
 	oneDayInSecs = 86400
 	//TODO: get prefix from router??
 	authPostAction = "/oauth/authorize?response_type=%s&client_id=%s&state=%s&scope=%s&redirect_uri=%s"
 	//TODO: stop gap for styling
-	basicCss = "<style type=\"text/css\">body{margin:40px auto;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px}h1,h2,h3{line-height:1.2}</style>"
+	basicCss = "<style type=\"text/css\">body{margin:40px auto;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px}h1,h2,h3{line-height:1.2}input{width:80%%;height:37px;margin:5px;font-size:18px;padding:10px;}</style>"
 )
 
 func InitOAuthApi(
@@ -94,46 +105,28 @@ func (o *OAuthApi) SetHandlers(prefix string, rtr *mux.Router) {
 
 }
 
-/*
- * Show the signup from so an external user can signup to the tidepool platform
- */
-func (o *OAuthApi) signupShow(w http.ResponseWriter, r *http.Request) {
-
-	//TODO: as a template
-	w.Write([]byte("<html>"))
-	w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
-	w.Write([]byte("<body>"))
-	w.Write([]byte("<h2>Tidepool Developer Account Signup</h2>"))
-	w.Write([]byte("<form action=\"\" method=\"POST\">"))
-	w.Write([]byte("<fieldset>"))
-	w.Write([]byte("<legend>Application</legend>"))
-	w.Write([]byte("App Name: <input type=\"text\" name=\"usr_name\" /><br/>"))
-	w.Write([]byte("App Redirect Uri: <input type=\"text\" name=\"uri\" /><br/>"))
-	w.Write([]byte("Permissons:"))
-	w.Write([]byte(makeScopeOption(scopeUpload) + "<br />"))
-	w.Write([]byte(makeScopeOption(scopeView) + " <br />"))
-	w.Write([]byte("<br/><br/>Email: <input type=\"email\" name=\"email\" /><br/>"))
-	w.Write([]byte("Password: <input type=\"password\" name=\"password\" /><br/>"))
-	w.Write([]byte("<br/><br/><input type=\"submit\"/>"))
-	w.Write([]byte("</fieldset>"))
-	w.Write([]byte("</form>"))
-	w.Write([]byte("</body></html>"))
-}
-
 func makeScopeOption(theScope scope) string {
 	//disabled and selected by default at this stage
 	selected := "checked"
-	disabled := "onclick=\"return false\""
-
-	return fmt.Sprintf("<input type=\"checkbox\" name=\"%s\"  value=\"%s\" %s %s /> %s", theScope.name, theScope.name, theScope.requestMsg, selected, disabled)
+	disabled := "return false"
+	return fmt.Sprintf("<input type=\"checkbox\" name=\"%s\"  value=\"%s\" %s onclick=\"%s\" /> %s", theScope.name, theScope.name, theScope.requestMsg, selected, disabled)
 }
 
 //check we have all the fields we require
-func signupFormValid(formData url.Values) bool {
-	return formData.Get("usr_name") != "" &&
+func signupFormValid(formData url.Values) (string, bool) {
+
+	if formData.Get("password") != formData.Get("password_confirm") {
+		return error_signup_pw_match, false
+	}
+
+	if formData.Get("usr_name") != "" &&
 		formData.Get("password") != "" &&
 		formData.Get("email") != "" &&
-		formData.Get("uri") != ""
+		formData.Get("uri") != "" {
+		return "", true
+	}
+
+	return error_signup_details, false
 }
 
 //return requested scope as a comma seperated list
@@ -149,6 +142,14 @@ func signupScope(formData url.Values) string {
 	}
 
 	return strings.Join(scopes, ",")
+}
+
+func writeError(w http.ResponseWriter, errorMessage string) {
+	w.Write([]byte("<html>"))
+	w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
+	w.Write([]byte("<body>"))
+	w.Write([]byte("<h4>" + errorMessage + "</h4>"))
+	w.Write([]byte("</body></html>"))
 }
 
 func (o *OAuthApi) applyPermissons(authorizingUserId, appUserId, scope string) bool {
@@ -173,12 +174,47 @@ func (o *OAuthApi) applyPermissons(authorizingUserId, appUserId, scope string) b
 }
 
 /*
+ * Show the signup from so an external user can signup to the tidepool platform
+ */
+func (o *OAuthApi) signupShow(w http.ResponseWriter, r *http.Request) {
+
+	//TODO: as a template
+	w.Write([]byte("<html>"))
+	w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
+	w.Write([]byte("<body>"))
+	w.Write([]byte("<h2>Tidepool developer account signup</h2>"))
+	w.Write([]byte("<form action=\"\" method=\"POST\">"))
+	w.Write([]byte("<fieldset>"))
+	w.Write([]byte("<h4>Application Information:</h4>"))
+	w.Write([]byte(fmt.Sprintf("<input type=\"text\" name=\"usr_name\" placeholder=\"%s\" /><br/>", placeholder_name)))
+	w.Write([]byte(fmt.Sprintf("<input type=\"text\" name=\"uri\" placeholder=\"%s\" /><br/>", placeholder_redirect_uri)))
+	w.Write([]byte("<ol>"))
+	w.Write([]byte("<li>" + scopeView.requestMsg + " </li>"))
+	w.Write([]byte("<li>" + scopeUpload.requestMsg + " </li>"))
+	w.Write([]byte("</ol>"))
+	//TODO: enable the ability to choose but hardcode for now
+	//w.Write([]byte(makeScopeOption(scopeUpload) + "<br />"))
+	//w.Write([]byte(makeScopeOption(scopeView) + "<br />"))
+	w.Write([]byte("<h4>Account Information:</h4>"))
+	w.Write([]byte(fmt.Sprintf("<input type=\"email\" name=\"email\" placeholder=\"%s\" /><br/>", placeholder_email)))
+	w.Write([]byte(fmt.Sprintf("<input type=\"password\" name=\"password\" placeholder=\"%s\" /><br/>", placeholder_pw)))
+	w.Write([]byte(fmt.Sprintf("<input type=\"password\" name=\"password_confirm\" placeholder=\"%s\" /><br/>", placeholder_pw_confirm)))
+	w.Write([]byte(fmt.Sprintf("<input type=\"submit\" value=\"%s\"/>", btn_signup)))
+	w.Write([]byte("</fieldset>"))
+	w.Write([]byte("</form>"))
+	w.Write([]byte("</body></html>"))
+}
+
+/*
  * Process signup for the app user
  */
 func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
-	if r.Method == "POST" && signupFormValid(r.Form) {
+
+	validationMsg, formValid := signupFormValid(r.Form)
+
+	if r.Method == "POST" && formValid {
 
 		var signupData = []byte(fmt.Sprintf(`{"username": "%s", "password": "%s","emails":["%s"]}`, r.Form.Get("usr_name"), r.Form.Get("password"), r.Form.Get("email")))
 
@@ -216,15 +252,13 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 				log.Printf("signup: AuthorizeData %v", authData)
 				if saveErr := o.storage.SaveAuthorize(authData); saveErr != nil {
 					log.Printf("signup error during SaveAuthorize: %s", saveErr.Error())
-					w.Write([]byte(saveErr.Error()))
-					return
+					writeError(w, error_generic)
 				}
 				log.Printf("signup: SetClient ID=%s", theClient.Id)
 				log.Printf("signup: SetClient Client=%v", theClient)
 				if setErr := o.storage.SetClient(theClient.Id, theClient); setErr != nil {
 					log.Printf("signup error during SetClient: %s", setErr.Error())
-					w.Write([]byte(setErr.Error()))
-					return
+					writeError(w, error_generic)
 				}
 				log.Print("signup: about to announce the details")
 				//Inform of the results
@@ -235,7 +269,7 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
 				w.Write([]byte("<body>"))
 				w.Write([]byte("<h2>" + msg_signup_complete + "</h2>"))
-				w.Write([]byte("<h4>" + msg_signup_save_details + "</h4>"))
+				w.Write([]byte("<b>" + msg_signup_save_details + "</b>"))
 
 				w.Write([]byte(signedUpIdMsg + " <br/>"))
 				w.Write([]byte(signedUpSecretMsg + " <br/>"))
@@ -245,17 +279,17 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 				log.Print("signup: " + signedUpIdMsg)
 				log.Print("signup: " + signedUpSecretMsg)
 			} else if signupResp.StatusCode == http.StatusConflict {
-				w.Write([]byte(error_signup_account_duplicate))
 				log.Printf("signup: [%s] ", error_signup_account_duplicate)
+				writeError(w, error_signup_account_duplicate)
 			} else {
-				w.Write([]byte(error_signup_account))
 				log.Printf("signup: [%s] status[%s]", error_signup_account, signupResp.Status)
+				writeError(w, error_signup_account)
 			}
 		}
 
 	} else if r.Method == "POST" {
-		log.Print(error_signup_details)
-		w.Write([]byte(error_signup_details))
+		log.Print(validationMsg)
+		writeError(w, validationMsg)
 	}
 }
 
@@ -316,24 +350,19 @@ func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWri
 	w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
 	w.Write([]byte("<body>"))
 	w.Write([]byte("<h2>" + msg_tidepool_account_access + "</h2>"))
-	w.Write([]byte("<h4>" + msg_tidepool_permissons_granted + "</h4>"))
+	w.Write([]byte("<p>" + msg_tidepool_permissons_granted + "</p>"))
 	w.Write([]byte(fmt.Sprintf("<form action="+authPostAction+" method=\"POST\">",
 		ar.Type, ar.Client.GetId(), ar.State, ar.Scope, url.QueryEscape(ar.RedirectUri))))
-
-	log.Printf("Login scopes %s", ar.Scope)
-
-	//if strings.Contains(ar.Scope, scopeView.name) {
-	//TODO: defaulted at this stage for initial implementation
+	//TODO: defaulted at this stage for initial implementation e.g. strings.Contains(ar.Scope, scopeView.name)
 	w.Write([]byte("<ol>"))
 	w.Write([]byte("<li>" + scopeView.grantMsg + " </li>"))
-	//}
-	//if strings.Contains(ar.Scope, scopeUpload.name) {
 	w.Write([]byte("<li>" + scopeUpload.grantMsg + " </li>"))
 	w.Write([]byte("</ol>"))
-	//}
-	w.Write([]byte("Email: <input type=\"text\" name=\"login\" /><br/>"))
-	w.Write([]byte("Password: <input type=\"password\" name=\"password\" /><br/>"))
-	w.Write([]byte("<input type=\"submit\"/>"))
+	w.Write([]byte(fmt.Sprintf("<input type=\"text\" name=\"login\" placeholder=\"%s\" /><br/>", placeholder_email)))
+	w.Write([]byte(fmt.Sprintf("<input type=\"password\" name=\"password\" placeholder=\"%s\" /><br/>", placeholder_pw)))
+	w.Write([]byte(fmt.Sprintf("<input type=\"submit\" value=\"%s\"/>", btn_authorize)))
+	//TODO allow them to deny
+	//w.Write([]byte(fmt.Sprintf("<input type=\"submit\" value=\"%s\"/>", btn_no_authorize)))
 	w.Write([]byte("</form>"))
 	w.Write([]byte("</body></html>"))
 
