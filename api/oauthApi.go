@@ -51,7 +51,7 @@ const (
 	error_signup_account_duplicate = "sorry but there is already an account with those details"
 	error_generic                  = "sorry but there setting up your account, please contact support@tidepool.org"
 	//user message
-	msg_signup_complete             = "Your account has been created"
+	msg_signup_complete             = "Your Tidepool developer account has been created"
 	msg_signup_save_details         = "Please save these details"
 	msg_tidepool_account_access     = "Login to grant access to Tidepool"
 	msg_tidepool_permissons_granted = "With access to your Tidepool account the app can:"
@@ -277,7 +277,7 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 				applyStyle(w)
 				w.Write([]byte("<body>"))
 				w.Write([]byte("<h2>" + msg_signup_complete + "</h2>"))
-				w.Write([]byte("<b>" + msg_signup_save_details + "</b>"))
+				w.Write([]byte("<p>" + msg_signup_save_details + "</p>"))
 
 				w.Write([]byte(signedUpIdMsg + " <br/>"))
 				w.Write([]byte(signedUpSecretMsg + " <br/>"))

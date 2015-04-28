@@ -34,9 +34,11 @@ Create a platform user
 * email
 * password
 
+![Signup](examples/signup.png)
+
 Make a note of both your client_id and client_secret.
 
-![Signup](examples/signup.png)
+![Signup Success](examples/signup_complete.png)
 
 ### Notes:
 
@@ -81,7 +83,7 @@ curl http://localhost:8009/oauth/v1/authorize \
 
 Grant permissons for your application to access the users Tidepool account on your behalf
 
- todo ....
+![Grant permissons](examples/login_auth.png)
 
 ## Getting the Access Token
 
