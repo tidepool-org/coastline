@@ -50,7 +50,9 @@ const (
 	error_signup_account_duplicate = "sorry but there is already an account with those details"
 
 	msg_signup_complete             = "Your account has been created"
-	msg_tidepool_permissons_granted = "Login to grant these permissons to your Tidepool account"
+	msg_signup_save_details         = "Please save these details"
+	msg_tidepool_account_access     = "Authorize access to your Tidepool account"
+	msg_tidepool_permissons_granted = "By logging in you will grant these permissons to your Tidepool account"
 
 	oneDayInSecs = 86400
 	//TODO: get prefix from router??
@@ -101,7 +103,7 @@ func (o *OAuthApi) signupShow(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("<html>"))
 	w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
 	w.Write([]byte("<body>"))
-	w.Write([]byte("DEVELOPER ACCOUNT SIGNUP <br/><br/>"))
+	w.Write([]byte("<h2>Tidepool Developer Account Signup</h2>"))
 	w.Write([]byte("<form action=\"\" method=\"POST\">"))
 	w.Write([]byte("<fieldset>"))
 	w.Write([]byte("<legend>Application</legend>"))
@@ -232,7 +234,9 @@ func (o *OAuthApi) signup(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte("<html>"))
 				w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
 				w.Write([]byte("<body>"))
-				w.Write([]byte(msg_signup_complete + " <br/>"))
+				w.Write([]byte("<h2>" + msg_signup_complete + "</h2>"))
+				w.Write([]byte("<h4>" + msg_signup_save_details + "</h4>"))
+
 				w.Write([]byte(signedUpIdMsg + " <br/>"))
 				w.Write([]byte(signedUpSecretMsg + " <br/>"))
 				w.Write([]byte("</html></body>"))
@@ -311,10 +315,10 @@ func (o *OAuthApi) handleLoginPage(ar *osin.AuthorizeRequest, w http.ResponseWri
 	w.Write([]byte("<html>"))
 	w.Write([]byte(fmt.Sprintf("<head>%s</head>", basicCss)))
 	w.Write([]byte("<body>"))
+	w.Write([]byte("<h2>" + msg_tidepool_account_access + "</h2>"))
+	w.Write([]byte("<h4>" + msg_tidepool_permissons_granted + "</h4>"))
 	w.Write([]byte(fmt.Sprintf("<form action="+authPostAction+" method=\"POST\">",
 		ar.Type, ar.Client.GetId(), ar.State, ar.Scope, url.QueryEscape(ar.RedirectUri))))
-
-	w.Write([]byte(msg_tidepool_permissons_granted + "<br/>"))
 
 	log.Printf("Login scopes %s", ar.Scope)
 
