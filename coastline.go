@@ -79,7 +79,7 @@ func main() {
 	/*
 	 * Oauth2 setup
 	 */
-	oauthApi := api.InitOAuthApi(sc.NewOAuthStorage(&config.Mongo), user, perms)
+	oauthApi := api.InitOAuthApi(config.Api, sc.NewOAuthStorage(&config.Mongo), user, perms)
 	oauthApi.SetHandlers("", rtr)
 
 	/*

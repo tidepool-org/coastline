@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,19 +13,43 @@ import (
 )
 
 type (
-	OAuthClient struct{}
+	OAuthClient struct{ Id, Secret string }
 )
 
+const (
+	//just so it doesn't look super bad :)
+	basicCss    = "<style type=\"text/css\">body{margin:40px auto;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px}h1,h2,h3{line-height:1.2}</style>"
+	clientUrl   = "http://localhost:14000"
+	tidepoolUrl = "http://localhost:8009"
+	appauthPath = "/appauth/code"
+)
+
+// e.g. go run oauth_test_client.go -client_id=9f265bbf73 -client_secret=6c0efdc2b8e234e8a59c8fda4abb560601bb0387
+//
 func main() {
 
-	log.Print("InitOAuthClient setting up ...")
+	log.Print("Setting up Tidepools OAuth2 test client ...")
 
-	client := &OAuthClient{}
+	id := flag.String("client_id", "", "your registered client_id")
+	secret := flag.String("client_secret", "", "your registered client_secret")
 
-	http.HandleFunc("/client/appauth/code", client.code)
-	http.HandleFunc("/client/app", client.app)
+	flag.Parse()
 
-	http.ListenAndServe(":14000", nil)
+	if *id != "" && *secret != "" {
+		client := &OAuthClient{Id: *id, Secret: *secret}
+
+		log.Printf("running for client_id=%s client_secret=%s", client.Id, client.Secret)
+
+		http.HandleFunc(appauthPath, client.code)
+		http.HandleFunc("/", client.app)
+
+		log.Printf("start at [%s]", clientUrl)
+
+		http.ListenAndServe(":14000", nil)
+	}
+
+	log.Fatalln("Sorry but we need you registered apps client_id and client_secret")
+
 }
 
 func (o *OAuthClient) code(w http.ResponseWriter, r *http.Request) {
@@ -39,8 +64,8 @@ func (o *OAuthClient) code(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("OAuthClient: code from form %s", code)
 
-	w.Write([]byte("<html><body>"))
-	w.Write([]byte("APP AUTH - CODE<br/>"))
+	w.Write([]byte(fmt.Sprintf("<html><head>%s</head><body>", basicCss)))
+	//w.Write([]byte("APP AUTH - CODE<br/>"))
 	defer w.Write([]byte("</body></html>"))
 
 	if code == "" {
@@ -51,15 +76,20 @@ func (o *OAuthClient) code(w http.ResponseWriter, r *http.Request) {
 	jr := make(map[string]interface{})
 
 	// build access code url
-	aurl := fmt.Sprintf("/oauth/token?grant_type=authorization_code&client_id=ff2245581b&client_secret=c68768e60d41f8ad3bdaef987db3330b3de60d10&redirect_uri=%s&code=%s",
-		url.QueryEscape("http://localhost:14000/client/appauth/code"), url.QueryEscape(code))
+	aurl := fmt.Sprintf(
+		"/oauth/token?grant_type=authorization_code&client_id=%s&client_secret=%s&redirect_uri=%s&code=%s",
+		o.Id,
+		o.Secret,
+		url.QueryEscape(clientUrl+appauthPath),
+		url.QueryEscape(code),
+	)
 
 	log.Printf("OAuthClient: auth url %s", aurl)
 
 	// if parse, download and parse json
 	if r.Form.Get("doparse") == "1" {
-		err := downloadAccessToken(fmt.Sprintf("http://localhost:8009%s", aurl),
-			&osin.BasicAuth{"ff2245581b", "c68768e60d41f8ad3bdaef987db3330b3de60d10"}, jr)
+		err := downloadAccessToken(fmt.Sprintf(tidepoolUrl+"%s", aurl),
+			&osin.BasicAuth{o.Id, o.Secret}, jr)
 		if err != nil {
 			w.Write([]byte(err.Error()))
 			w.Write([]byte("<br/>"))
@@ -70,18 +100,23 @@ func (o *OAuthClient) code(w http.ResponseWriter, r *http.Request) {
 
 	// show json error
 	if erd, ok := jr["error"]; ok {
-		w.Write([]byte(fmt.Sprintf("ERROR: %s<br/>\n", erd)))
+		w.Write([]byte(fmt.Sprintf("An error occurred: %s<br/>\n", erd)))
 	}
 
 	// show json access token
 	if at, ok := jr["access_token"]; ok {
-		w.Write([]byte(fmt.Sprintf("ACCESS TOKEN: %s<br/>\n", at)))
+		w.Write([]byte("<h2>Access Token:</h2>"))
+		w.Write([]byte(fmt.Sprintf("%v", at)))
 	}
 
-	w.Write([]byte(fmt.Sprintf("FULL RESULT: %+v<br/>\n", jr)))
+	//show the full result
+	if jr["refresh_token"] != nil && jr["access_token"] != nil {
+		w.Write([]byte("<h2> Full Result:</h2>"))
+		w.Write([]byte(fmt.Sprintf("%v<br/>", jr)))
+	}
 
 	// output links
-	w.Write([]byte(fmt.Sprintf("<a href=\"%s\">Goto Token URL</a><br/>", aurl)))
+	w.Write([]byte(fmt.Sprintf("<a href=\"%s\">Goto Token URL</a><br/>", tidepoolUrl+aurl)))
 
 	cururl := *r.URL
 	curq := cururl.Query()
@@ -93,8 +128,13 @@ func (o *OAuthClient) code(w http.ResponseWriter, r *http.Request) {
 func (o *OAuthClient) app(w http.ResponseWriter, r *http.Request) {
 	log.Print("OAuthClient: app login")
 
-	w.Write([]byte("<html><body>"))
-	w.Write([]byte(fmt.Sprintf("<a href=\"http://localhost:8009/oauth/authorize?response_type=code&client_id=ff2245581b&redirect_uri=%s\">Tidepool Login</a><br/>", url.QueryEscape("http://localhost:14000/client/appauth/code"))))
+	w.Write([]byte(fmt.Sprintf("<html><head>%s</head><body>", basicCss)))
+	w.Write([]byte(fmt.Sprintf(
+		"<a href=\"%s/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s\">Tidepool Login</a><br/>",
+		tidepoolUrl,
+		o.Id,
+		url.QueryEscape(clientUrl+appauthPath),
+	)))
 	w.Write([]byte("</body></html>"))
 }
 

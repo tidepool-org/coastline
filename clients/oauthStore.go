@@ -80,9 +80,13 @@ func (store *OAuthStorage) SetClient(id string, client osin.Client) error {
 	defer cpy.Close()
 	clients := cpy.DB(db_name).C(client_collection)
 
+	log.Printf("given client %v", client)
+	log.Printf("given id %s", id)
 	//see https://github.com/RangelReale/osin/issues/40
 	clientToSave := osin.DefaultClient{}
 	clientToSave.CopyFrom(client)
+
+	log.Printf("client to save %v", clientToSave)
 
 	_, err := clients.UpsertId(id, clientToSave)
 	return err
