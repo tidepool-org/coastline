@@ -1,16 +1,3 @@
-coastline
-=========
-
-Coastline is the entrance to the ocean; in our case it manages 3rd party accounts and logins
-
-## Building
-
-We are doing our own dependancy managment using the Comedeps file. To build as expected then run the command below
-
-```
-$ source ./build
-```
-
 Tidepool's OAuth 2.0
 =========
 
@@ -34,11 +21,11 @@ Create a platform user
 * email
 * password
 
-![Signup](examples/signup.png)
+![Signup](signup_empty.png)
 
 Make a note of both your client_id and client_secret.
 
-![Signup Success](examples/signup_complete.png)
+![Signup Success](signup_complete.png)
 
 ### Notes:
 
@@ -83,7 +70,7 @@ curl http://localhost:8009/oauth/v1/authorize \
 
 Grant permissons for your application to access the users Tidepool account on your behalf
 
-![Grant permissons](examples/login_auth.png)
+![Grant permissons](login_auth.png)
 
 ## Getting the Access Token
 
