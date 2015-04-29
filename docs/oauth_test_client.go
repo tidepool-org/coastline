@@ -43,12 +43,12 @@ func main() {
 		http.HandleFunc(appauthPath, client.code)
 		http.HandleFunc("/", client.app)
 
-		log.Printf("start at [%s]", clientUrl)
+		log.Printf("go to [%s]", clientUrl)
 
 		http.ListenAndServe(":14000", nil)
 	}
 
-	log.Fatalln("Sorry but we need you registered apps client_id and client_secret")
+	log.Fatalln("Sorry but we need your registered apps client_id and client_secret")
 
 }
 
@@ -88,10 +88,10 @@ func (o *OAuthClient) code(w http.ResponseWriter, r *http.Request) {
 
 	// if parse, download and parse json
 	if r.Form.Get("doparse") == "1" {
-		err := downloadAccessToken(fmt.Sprintf(tidepoolUrl+"%s", aurl),
-			&osin.BasicAuth{o.Id, o.Secret}, jr)
+
+		err := downloadAccessToken(fmt.Sprintf(tidepoolUrl+"%s", aurl), &osin.BasicAuth{o.Id, o.Secret}, jr)
 		if err != nil {
-			w.Write([]byte(err.Error()))
+			w.Write([]byte("Error downloading token: " + err.Error()))
 			w.Write([]byte("<br/>"))
 		}
 	}
@@ -111,7 +111,7 @@ func (o *OAuthClient) code(w http.ResponseWriter, r *http.Request) {
 
 	//show the full result
 	if jr["refresh_token"] != nil && jr["access_token"] != nil {
-		w.Write([]byte("<h2> Full Result:</h2>"))
+		w.Write([]byte("<h2>Full Result:</h2>"))
 		w.Write([]byte(fmt.Sprintf("%v<br/>", jr)))
 	}
 
@@ -154,7 +154,8 @@ func downloadAccessToken(url string, auth *osin.BasicAuth, output map[string]int
 		return err
 	}
 
-	if presp.StatusCode != 200 {
+	if presp.StatusCode != http.StatusOK {
+		log.Printf("downloadAccessToken: %b", presp.StatusCode)
 		return errors.New("Invalid status code")
 	}
 
