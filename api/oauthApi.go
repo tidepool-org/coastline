@@ -35,6 +35,7 @@ type (
 	scope struct {
 		name, requestMsg, grantMsg string
 	}
+	details map[string]interface{}
 )
 
 var (
@@ -152,7 +153,7 @@ func selectedScopes(formData url.Values) string {
 }
 
 func getAllScopes() string {
-	return strings.Join(scopeView.name, scopeUpload, ",")
+	return fmt.Sprintf("%s,%s", scopeView.name, scopeUpload.name)
 }
 
 //wrapper to write error and display to the user
@@ -247,14 +248,17 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 			_ = json.Unmarshal(body, &usr)
 
 			secret, _ := models.GenerateHash(usr["userid"], r.Form.Get("uri"), time.Now().String())
+			code, _ := models.GenerateHash(usr["username"], r.Form.Get("uri"), time.Now().String())
 
 			theClient := &osin.DefaultClient{
 				Id:          usr["userid"],
 				Secret:      secret,
 				RedirectUri: r.Form.Get("uri"),
+				UserData:    map[string]interface{}{"AppName": usr["username"]},
 			}
 
 			authData := &osin.AuthorizeData{
+				Code:        code,
 				Client:      theClient,
 				Scope:       getAllScopes(),
 				RedirectUri: theClient.RedirectUri,
