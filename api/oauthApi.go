@@ -248,7 +248,6 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 			_ = json.Unmarshal(body, &usr)
 
 			secret, _ := models.GenerateHash(usr["userid"], r.Form.Get("uri"), time.Now().String())
-			code, _ := models.GenerateHash(usr["username"], r.Form.Get("uri"), time.Now().String())
 
 			theClient := &osin.DefaultClient{
 				Id:          usr["userid"],
@@ -258,13 +257,23 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 			}
 
 			authData := &osin.AuthorizeData{
-				Code:        code,
 				Client:      theClient,
 				Scope:       getAllScopes(),
 				RedirectUri: theClient.RedirectUri,
 				ExpiresIn:   int32(o.OAuthConfig.ExpireDays * oneDayInSecs),
 				CreatedAt:   time.Now(),
 			}
+
+			// generate token code
+			code, err := o.oauthServer.AuthorizeTokenGen.GenerateAuthorizeToken(authData)
+			if err != nil {
+				log.Print("processSignup: err[%s]", err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+				writeError(w, err.Error())
+				return
+			}
+
+			authData.Code = code
 
 			log.Printf("processSignup: AuthorizeData %v", authData)
 			if saveErr := o.storage.SaveAuthorize(authData); saveErr != nil {
