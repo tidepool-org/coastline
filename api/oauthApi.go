@@ -1,10 +1,7 @@
 package api
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -233,27 +230,17 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" && formValid {
 
-		var signupData = []byte(fmt.Sprintf(`{"username": "%s", "password": "%s","emails":["%s"]}`, r.Form.Get("usr_name"), r.Form.Get("password"), r.Form.Get("email")))
-
-		log.Printf("signup: details for new user [%s]", string(signupData[:]))
-
-		//TODO: add call to go-common
-		if signupResp, err := http.Post("http://localhost:8009/auth/user", "application/json", bytes.NewBuffer(signupData)); err != nil {
-			w.Write([]byte(fmt.Sprintf("err during app account signup: %s", err.Error())))
-		} else if signupResp.StatusCode == http.StatusCreated {
-
-			body, _ := ioutil.ReadAll(signupResp.Body)
-
-			var usr map[string]string
-			_ = json.Unmarshal(body, &usr)
-
-			secret, _ := models.GenerateHash(usr["userid"], r.Form.Get("uri"), time.Now().String())
+		if signupResp, err := o.userApi.Signup(r.Form.Get("usr_name"), r.Form.Get("password"), r.Form.Get("email")); err != nil {
+			log.Printf("processSignup: error[%s] status[%s]", error_signup_account, err.Error())
+			writeError(w, error_signup_account)
+		} else {
+			secret, _ := models.GenerateHash(signupResp.UserID, r.Form.Get("uri"), time.Now().String())
 
 			theClient := &osin.DefaultClient{
-				Id:          usr["userid"],
+				Id:          signupResp.UserID,
 				Secret:      secret,
 				RedirectUri: r.Form.Get("uri"),
-				UserData:    map[string]interface{}{"AppName": usr["username"]},
+				UserData:    map[string]interface{}{"AppName": signupResp.UserName},
 			}
 
 			authData := &osin.AuthorizeData{
@@ -301,14 +288,7 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("</html></body>"))
 
 			log.Printf("processSignup: complete [%v] [%s] [%s] ", authData.Client, signedUpIdMsg, signedUpSecretMsg)
-		} else if signupResp.StatusCode == http.StatusConflict {
-			log.Printf("processSignup: error[%s] ", error_signup_account_duplicate)
-			writeError(w, error_signup_account_duplicate)
-		} else {
-			log.Printf("processSignup: error[%s] status[%s]", error_signup_account, signupResp.Status)
-			writeError(w, error_signup_account)
 		}
-
 	} else if r.Method == "POST" && formValid == false {
 		log.Printf("processSignup: error[%s]", validationMsg)
 		writeError(w, validationMsg)
