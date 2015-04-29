@@ -58,7 +58,7 @@ const (
 	msg_signup_complete             = "Your Tidepool developer account has been created"
 	msg_signup_save_details         = "Please save these details"
 	msg_tidepool_account_access     = "Login to grant access to Tidepool"
-	msg_tidepool_permissons_granted = "With access to your Tidepool account the app can:"
+	msg_tidepool_permissons_granted = "With access to your Tidepool account %s can:"
 	//form text
 	btn_authorize            = "Grant access to Tidepool"
 	btn_no_authorize         = "Deny access to Tidepool"
@@ -367,11 +367,13 @@ func (o *OAuthApi) processAuthorize(w http.ResponseWriter, r *http.Request) {
 //show the login form for authorization
 func (o *OAuthApi) showLogin(ar *osin.AuthorizeRequest, w http.ResponseWriter, r *http.Request) {
 	//TODO: as a template
+	ud := ar.Client.GetUserData().(map[string]interface{})
+
 	w.Write([]byte("<html>"))
 	applyStyle(w)
 	w.Write([]byte("<body>"))
 	w.Write([]byte("<h2>" + msg_tidepool_account_access + "</h2>"))
-	w.Write([]byte("<p>" + msg_tidepool_permissons_granted + "</p>"))
+	w.Write([]byte("<b>" + fmt.Sprintf(msg_tidepool_permissons_granted, ud["AppName"]) + "</b>"))
 	w.Write([]byte(fmt.Sprintf("<form action="+authPostAction+" method=\"POST\">",
 		ar.Type, ar.Client.GetId(), ar.State, ar.Scope, url.QueryEscape(ar.RedirectUri))))
 	//TODO: defaulted at this stage for initial implementation e.g. strings.Contains(ar.Scope, scopeView.name)

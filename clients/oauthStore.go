@@ -55,6 +55,20 @@ func NewOAuthStorage(config *mongo.Config) *OAuthStorage {
 	return storage
 }
 
+func getUserData(raw interface{}) map[string]interface{} {
+	userDataM := raw.(bson.M)
+	return map[string]interface{}{"AppName": userDataM["AppName"]}
+}
+
+func getClient(raw interface{}) *osin.DefaultClient {
+	clientM := raw.(bson.M)
+	return &osin.DefaultClient{
+		Id:          clientM["id"].(string),
+		RedirectUri: clientM["redirecturi"].(string),
+		Secret:      clientM["secret"].(string),
+	}
+}
+
 func (s *OAuthStorage) Clone() osin.Storage {
 	return s
 }
@@ -72,6 +86,10 @@ func (store *OAuthStorage) GetClient(id string) (osin.Client, error) {
 	clients := cpy.DB(db_name).C(client_collection)
 	client := &osin.DefaultClient{}
 	err := clients.FindId(id).Select(selectFilter).One(client)
+
+	//userDataM := client.UserData.(bson.M)
+	client.UserData = getUserData(client.UserData) // map[string]interface{}{"AppName": userDataM["AppName"]}
+
 	return client, err
 }
 
@@ -116,13 +134,10 @@ func (store *OAuthStorage) LoadAuthorize(code string) (*osin.AuthorizeData, erro
 
 	//TODO: funky but works for now
 	//see https://github.com/RangelReale/osin/issues/40
-	clientM := data.UserData.(bson.M)
-	data.Client = &osin.DefaultClient{
-		Id:          clientM["id"].(string),
-		RedirectUri: clientM["redirecturi"].(string),
-		Secret:      clientM["secret"].(string),
-	}
+	data.Client = getClient(data.UserData)
 	data.UserData = nil
+
+	log.Printf("## LoadAuthorize ## %v", data)
 
 	return data, err
 }
@@ -156,13 +171,10 @@ func (store *OAuthStorage) LoadAccess(token string) (*osin.AccessData, error) {
 
 	//TODO: funky but works for now
 	//see https://github.com/RangelReale/osin/issues/40
-	clientM := data.UserData.(bson.M)
-	data.Client = &osin.DefaultClient{
-		Id:          clientM["id"].(string),
-		RedirectUri: clientM["redirecturi"].(string),
-		Secret:      clientM["secret"].(string),
-	}
+	data.Client = getClient(data.UserData)
 	data.UserData = nil
+
+	log.Printf("## LoadAccess ## %v", data)
 
 	return data, err
 }
