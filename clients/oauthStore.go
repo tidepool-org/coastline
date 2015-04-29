@@ -33,8 +33,6 @@ func NewOAuthStorage(config *mongo.Config) *OAuthStorage {
 		log.Fatal(err)
 	}
 
-	//mongoSession.SetMode(mgo.Monotonic, true)
-
 	storage := &OAuthStorage{session: mongoSession}
 
 	index := mgo.Index{
@@ -49,7 +47,7 @@ func NewOAuthStorage(config *mongo.Config) *OAuthStorage {
 
 	idxErr := accesses.EnsureIndex(index)
 	if idxErr != nil {
-		log.Print("NewOAuthStorage EnsureIndex error")
+		log.Printf("NewOAuthStorage EnsureIndex error[%s] ", idxErr.Error())
 		log.Fatal(idxErr)
 	}
 	return storage
@@ -61,11 +59,14 @@ func getUserData(raw interface{}) map[string]interface{} {
 }
 
 func getClient(raw interface{}) *osin.DefaultClient {
+
 	clientM := raw.(bson.M)
+
 	return &osin.DefaultClient{
 		Id:          clientM["id"].(string),
 		RedirectUri: clientM["redirecturi"].(string),
 		Secret:      clientM["secret"].(string),
+		UserData:    getUserData(clientM["userdata"]),
 	}
 }
 
@@ -80,15 +81,14 @@ func (s *OAuthStorage) Close() {
 }
 
 func (store *OAuthStorage) GetClient(id string) (osin.Client, error) {
-	log.Printf("GetClient %s", id)
+	log.Printf("GetClient id[%s]", id)
 	cpy := store.session.Copy()
 	defer cpy.Close()
 	clients := cpy.DB(db_name).C(client_collection)
 	client := &osin.DefaultClient{}
 	err := clients.FindId(id).Select(selectFilter).One(client)
 
-	//userDataM := client.UserData.(bson.M)
-	client.UserData = getUserData(client.UserData) // map[string]interface{}{"AppName": userDataM["AppName"]}
+	client.UserData = getUserData(client.UserData)
 
 	return client, err
 }
@@ -98,13 +98,9 @@ func (store *OAuthStorage) SetClient(id string, client osin.Client) error {
 	defer cpy.Close()
 	clients := cpy.DB(db_name).C(client_collection)
 
-	log.Printf("given client %v", client)
-	log.Printf("given id %s", id)
 	//see https://github.com/RangelReale/osin/issues/40
 	clientToSave := osin.DefaultClient{}
 	clientToSave.CopyFrom(client)
-
-	log.Printf("client to save %v", clientToSave)
 
 	_, err := clients.UpsertId(id, clientToSave)
 	return err
@@ -119,30 +115,28 @@ func (store *OAuthStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 	data.UserData = data.Client.(*osin.DefaultClient)
 	data.Client = nil
 
-	log.Printf("auth to save %v", data.UserData)
-
 	_, err := authorizations.UpsertId(data.Code, data)
 	return err
 }
 
 func (store *OAuthStorage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
+	log.Printf("LoadAuthorize for code[%s]", code)
 	cpy := store.session.Copy()
 	defer cpy.Close()
 	authorizations := cpy.DB(db_name).C(authorize_collection)
 	data := &osin.AuthorizeData{}
-	err := authorizations.FindId(code).Select(selectFilter).One(data)
 
-	//TODO: funky but works for now
+	err := authorizations.Find(bson.M{"code": code}).Select(selectFilter).One(data)
+
 	//see https://github.com/RangelReale/osin/issues/40
 	data.Client = getClient(data.UserData)
 	data.UserData = nil
-
-	log.Printf("## LoadAuthorize ## %v", data)
 
 	return data, err
 }
 
 func (store *OAuthStorage) RemoveAuthorize(code string) error {
+	log.Printf("RemoveAuthorize for code[%s]", code)
 	cpy := store.session.Copy()
 	defer cpy.Close()
 	authorizations := cpy.DB(db_name).C(authorize_collection)
@@ -150,6 +144,7 @@ func (store *OAuthStorage) RemoveAuthorize(code string) error {
 }
 
 func (store *OAuthStorage) SaveAccess(data *osin.AccessData) error {
+	log.Printf("SaveAccess for token[%s]", data.AccessToken)
 	cpy := store.session.Copy()
 	defer cpy.Close()
 
@@ -163,23 +158,22 @@ func (store *OAuthStorage) SaveAccess(data *osin.AccessData) error {
 }
 
 func (store *OAuthStorage) LoadAccess(token string) (*osin.AccessData, error) {
+	log.Printf("LoadAccess for token[%s]", token)
 	cpy := store.session.Copy()
 	defer cpy.Close()
 	accesses := cpy.DB(db_name).C(access_collection)
 	data := &osin.AccessData{}
 	err := accesses.FindId(token).Select(selectFilter).One(data)
 
-	//TODO: funky but works for now
 	//see https://github.com/RangelReale/osin/issues/40
 	data.Client = getClient(data.UserData)
 	data.UserData = nil
-
-	log.Printf("## LoadAccess ## %v", data)
 
 	return data, err
 }
 
 func (store *OAuthStorage) RemoveAccess(token string) error {
+	log.Printf("RemoveAccess for token[%s]", token)
 	cpy := store.session.Copy()
 	defer cpy.Close()
 	accesses := cpy.DB(db_name).C(access_collection)
@@ -187,6 +181,7 @@ func (store *OAuthStorage) RemoveAccess(token string) error {
 }
 
 func (store *OAuthStorage) LoadRefresh(token string) (*osin.AccessData, error) {
+	log.Printf("LoadRefresh for token[%s]", token)
 	cpy := store.session.Copy()
 	defer cpy.Close()
 	accesses := cpy.DB(db_name).C(access_collection)
@@ -196,6 +191,7 @@ func (store *OAuthStorage) LoadRefresh(token string) (*osin.AccessData, error) {
 }
 
 func (store *OAuthStorage) RemoveRefresh(token string) error {
+	log.Printf("RemoveRefresh for token[%s]", token)
 	cpy := store.session.Copy()
 	defer cpy.Close()
 	accesses := cpy.DB(db_name).C(access_collection)
