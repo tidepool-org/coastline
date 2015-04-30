@@ -54,20 +54,29 @@ func NewOAuthStorage(config *mongo.Config) *OAuthStorage {
 }
 
 func getUserData(raw interface{}) map[string]interface{} {
-	userDataM := raw.(bson.M)
-	return map[string]interface{}{"AppName": userDataM["AppName"]}
+	if raw != nil {
+		userDataM := raw.(bson.M)
+		return map[string]interface{}{"AppName": userDataM["AppName"]}
+	}
+	log.Print("getUserData has no raw data to process")
+	return nil
 }
 
 func getClient(raw interface{}) *osin.DefaultClient {
 
-	clientM := raw.(bson.M)
+	if raw != nil {
 
-	return &osin.DefaultClient{
-		Id:          clientM["id"].(string),
-		RedirectUri: clientM["redirecturi"].(string),
-		Secret:      clientM["secret"].(string),
-		UserData:    getUserData(clientM["userdata"]),
+		clientM := raw.(bson.M)
+
+		return &osin.DefaultClient{
+			Id:          clientM["id"].(string),
+			RedirectUri: clientM["redirecturi"].(string),
+			Secret:      clientM["secret"].(string),
+			UserData:    getUserData(clientM["userdata"]),
+		}
 	}
+	log.Print("getClient has no raw data to process")
+	return &osin.DefaultClient{}
 }
 
 func (s *OAuthStorage) Clone() osin.Storage {
