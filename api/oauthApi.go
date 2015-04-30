@@ -156,11 +156,10 @@ func getAllScopes() string {
 //wrapper to write error and display to the user
 func writeError(w http.ResponseWriter, errorMessage string, statusCode int) {
 	w.WriteHeader(statusCode)
-	w.Write([]byte("<html>"))
-	applyStyle(w)
-	w.Write([]byte("<body>"))
-	w.Write([]byte("<h4>" + errorMessage + "</h4>"))
+	w.Write([]byte("<html><body>"))
+	w.Write([]byte("<i>" + errorMessage + "</i>"))
 	w.Write([]byte("</body></html>"))
+	return
 }
 
 //attach basic styles to the rendered components
@@ -224,12 +223,13 @@ func (o *OAuthApi) showSignup(w http.ResponseWriter, r *http.Request) {
 
 //Process signup for the app user
 func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
+	applyStyle(w)
 
 	r.ParseForm()
 
 	validationMsg, formValid := signupFormValid(r.Form)
 
-	if r.Method == "POST" && formValid {
+	if formValid {
 
 		if signupResp, err := o.userApi.Signup(r.Form.Get("usr_name"), r.Form.Get("password"), r.Form.Get("email")); err != nil {
 			log.Printf("processSignup: error[%s] status[%s]", error_signup_account, err.Error())
@@ -289,7 +289,7 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 
 			log.Printf("processSignup: complete [%v] [%s] [%s] ", authData.Client, signedUpIdMsg, signedUpSecretMsg)
 		}
-	} else if r.Method == "POST" && formValid == false {
+	} else if formValid == false {
 		log.Printf("processSignup: error[%s]", validationMsg)
 		writeError(w, validationMsg, http.StatusBadRequest)
 	}
@@ -297,6 +297,7 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 
 //Start the authorize process showing the Tidepool login form to the user
 func (o *OAuthApi) showAuthorize(w http.ResponseWriter, r *http.Request) {
+	applyStyle(w)
 
 	resp := o.oauthServer.NewResponse()
 	defer resp.Close()
@@ -308,14 +309,15 @@ func (o *OAuthApi) showAuthorize(w http.ResponseWriter, r *http.Request) {
 		o.showLogin(ar, w, r)
 	}
 	if resp.IsError && resp.InternalError != nil {
-		log.Printf("showAuthorize: stink bro it's all gone pete tong %s ", resp.InternalError)
-		writeError(w, resp.InternalError.Error(), http.StatusInternalServerError)
+		log.Printf("showAuthorize: stink bro it's all gone pete tong error[%s] code[%d] ", resp.InternalError.Error(), resp.StatusCode)
+		//writeError(w, resp.InternalError.Error(), resp.StatusCode)
 	}
 	osin.OutputJSON(resp, w, r)
 }
 
 //Process the authorization request for the Tidepool user
 func (o *OAuthApi) processAuthorize(w http.ResponseWriter, r *http.Request) {
+	applyStyle(w)
 
 	resp := o.oauthServer.NewResponse()
 	defer resp.Close()
@@ -344,9 +346,15 @@ func (o *OAuthApi) processAuthorize(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if resp.IsError && resp.InternalError != nil {
-		log.Print("processAuthorize: error[%s]", resp.InternalError.Error())
-		writeError(w, resp.InternalError.Error(), http.StatusInternalServerError)
+		log.Printf("processAuthorize: error[%s] status[%d]", resp.InternalError.Error(), resp.StatusCode)
+		//writeError(w, resp.InternalError.Error(), resp.StatusCode)
 	}
+	//TODO: sort this out
+	givenCode := fmt.Sprintf("code=%s", resp.Output["code"])
+	givenState := fmt.Sprintf("state=%s", resp.Output["state"])
+	log.Printf("processAuthorize: resp code[%s] state[%s] ", givenCode, givenState)
+	w.Write([]byte(givenCode + " <br/>"))
+	w.Write([]byte(givenState + " <br/>"))
 	osin.OutputJSON(resp, w, r)
 }
 
@@ -380,7 +388,11 @@ func (o *OAuthApi) showLogin(ar *osin.AuthorizeRequest, w http.ResponseWriter, r
 func (o *OAuthApi) doLogin(ar *osin.AuthorizeRequest, w http.ResponseWriter, r *http.Request) string {
 	log.Print("processLogin: do the login")
 	r.ParseForm()
+
+	log.Printf("form data %s %s", r.Form.Get("login"), r.Form.Get("password"))
+
 	if r.Form.Get("login") != "" && r.Form.Get("password") != "" {
+		log.Print("processLogin: about to login to the platform")
 		if usr, _, err := o.userApi.Login(r.Form.Get("login"), r.Form.Get("password")); err != nil {
 			log.Printf("processLogin: err during account login: %s", err.Error())
 		} else if err == nil && usr == nil {
@@ -396,7 +408,8 @@ func (o *OAuthApi) doLogin(ar *osin.AuthorizeRequest, w http.ResponseWriter, r *
 // Access token endpoint
 func (o *OAuthApi) token(w http.ResponseWriter, r *http.Request) {
 
-	log.Print("OAuthApi: token")
+	log.Print("token: getting token")
+	applyStyle(w)
 
 	resp := o.oauthServer.NewResponse()
 	defer resp.Close()
@@ -406,7 +419,9 @@ func (o *OAuthApi) token(w http.ResponseWriter, r *http.Request) {
 		o.oauthServer.FinishAccessRequest(resp, r, ar)
 	}
 	if resp.IsError && resp.InternalError != nil {
-		fmt.Printf("ERROR: %s\n", resp.InternalError)
+		log.Printf("token: error[%s] status[%d]", resp.InternalError.Error(), resp.StatusCode)
+		//TODO: sort out error's seems to always be 200
+		//writeError(w, resp.InternalError.Error(), resp.StatusCode)
 	}
 	osin.OutputJSON(resp, w, r)
 }
@@ -415,6 +430,7 @@ func (o *OAuthApi) token(w http.ResponseWriter, r *http.Request) {
 func (o *OAuthApi) info(w http.ResponseWriter, r *http.Request) {
 
 	log.Print("OAuthApi: info")
+	applyStyle(w)
 
 	resp := o.oauthServer.NewResponse()
 	defer resp.Close()
