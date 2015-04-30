@@ -297,7 +297,6 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 
 //Start the authorize process showing the Tidepool login form to the user
 func (o *OAuthApi) showAuthorize(w http.ResponseWriter, r *http.Request) {
-	applyStyle(w)
 
 	resp := o.oauthServer.NewResponse()
 	defer resp.Close()
