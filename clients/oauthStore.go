@@ -95,7 +95,7 @@ func (store *OAuthStorage) GetClient(id string) (osin.Client, error) {
 	defer cpy.Close()
 	clients := cpy.DB(db_name).C(client_collection)
 	client := &osin.DefaultClient{}
-	if err := clients.FindId(id).Select(selectFilter).One(client); err != nil {
+	if err := clients.Find(bson.M{"id": id}).Select(selectFilter).One(client); err != nil {
 		log.Printf("GetClient error[%s]", err.Error())
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (store *OAuthStorage) SetClient(id string, client osin.Client) error {
 	clientToSave := osin.DefaultClient{}
 	clientToSave.CopyFrom(client)
 
-	_, err := clients.UpsertId(id, clientToSave)
+	_, err := clients.Upsert(bson.M{"id": id}, clientToSave)
 	return err
 }
 
@@ -127,7 +127,7 @@ func (store *OAuthStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 	data.UserData = data.Client.(*osin.DefaultClient)
 	data.Client = nil
 
-	if _, err := authorizations.UpsertId(data.Code, data); err != nil {
+	if _, err := authorizations.Upsert(bson.M{"code": data.Code}, data); err != nil {
 		log.Printf("SaveAuthorize error[%s]", err.Error())
 		return err
 	}
@@ -160,7 +160,7 @@ func (store *OAuthStorage) RemoveAuthorize(code string) error {
 	cpy := store.session.Copy()
 	defer cpy.Close()
 	authorizations := cpy.DB(db_name).C(authorize_collection)
-	return authorizations.RemoveId(code)
+	return authorizations.Remove(bson.M{"code": code})
 }
 
 func (store *OAuthStorage) SaveAccess(data *osin.AccessData) error {
@@ -174,7 +174,7 @@ func (store *OAuthStorage) SaveAccess(data *osin.AccessData) error {
 
 	accesses := cpy.DB(db_name).C(access_collection)
 
-	if _, err := accesses.UpsertId(data.AccessToken, data); err != nil {
+	if _, err := accesses.Upsert(bson.M{"accesstoken": data.AccessToken}, data); err != nil {
 		log.Printf("SaveAccess error[%s]", err.Error())
 	}
 
@@ -187,7 +187,7 @@ func (store *OAuthStorage) LoadAccess(token string) (*osin.AccessData, error) {
 	defer cpy.Close()
 	accesses := cpy.DB(db_name).C(access_collection)
 	data := &osin.AccessData{}
-	if err := accesses.FindId(token).Select(selectFilter).One(data); err != nil {
+	if err := accesses.Find(bson.M{"accesstoken": token}).Select(selectFilter).One(data); err != nil {
 		log.Printf("LoadAccess error[%s]", err.Error())
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (store *OAuthStorage) RemoveAccess(token string) error {
 	cpy := store.session.Copy()
 	defer cpy.Close()
 	accesses := cpy.DB(db_name).C(access_collection)
-	return accesses.RemoveId(token)
+	return accesses.Remove(bson.M{"accesstoken": token})
 }
 
 func (store *OAuthStorage) LoadRefresh(token string) (*osin.AccessData, error) {
@@ -214,7 +214,7 @@ func (store *OAuthStorage) LoadRefresh(token string) (*osin.AccessData, error) {
 	accesses := cpy.DB(db_name).C(access_collection)
 	data := new(osin.AccessData)
 
-	if err := accesses.Find(bson.M{refreshtoken: token}).Select(selectFilter).One(data); err != nil {
+	if err := accesses.Find(bson.M{"refreshtoken": token}).Select(selectFilter).One(data); err != nil {
 		log.Printf("LoadRefresh error[%s]", err.Error())
 		return nil, err
 	}
@@ -227,7 +227,7 @@ func (store *OAuthStorage) RemoveRefresh(token string) error {
 	cpy := store.session.Copy()
 	defer cpy.Close()
 	accesses := cpy.DB(db_name).C(access_collection)
-	return accesses.Update(bson.M{refreshtoken: token}, bson.M{
+	return accesses.Update(bson.M{"refreshtoken": token}, bson.M{
 		"$unset": bson.M{
 			refreshtoken: 1,
 		}})
