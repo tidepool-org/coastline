@@ -154,7 +154,8 @@ func getAllScopes() string {
 }
 
 //wrapper to write error and display to the user
-func writeError(w http.ResponseWriter, errorMessage string) {
+func writeError(w http.ResponseWriter, errorMessage string, statusCode int) {
+	w.WriteHeader(statusCode)
 	w.Write([]byte("<html>"))
 	applyStyle(w)
 	w.Write([]byte("<body>"))
@@ -232,7 +233,7 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 
 		if signupResp, err := o.userApi.Signup(r.Form.Get("usr_name"), r.Form.Get("password"), r.Form.Get("email")); err != nil {
 			log.Printf("processSignup: error[%s] status[%s]", error_signup_account, err.Error())
-			writeError(w, error_signup_account)
+			writeError(w, error_signup_account, http.StatusInternalServerError)
 		} else {
 			secret, _ := models.GenerateHash(signupResp.UserID, r.Form.Get("uri"), time.Now().String())
 
@@ -255,8 +256,7 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 			code, err := o.oauthServer.AuthorizeTokenGen.GenerateAuthorizeToken(authData)
 			if err != nil {
 				log.Print("processSignup: err[%s]", err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
-				writeError(w, err.Error())
+				writeError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
@@ -265,12 +265,12 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 			log.Printf("processSignup: AuthorizeData %v", authData)
 			if saveErr := o.storage.SaveAuthorize(authData); saveErr != nil {
 				log.Printf("processSignup: error during SaveAuthorize: %s", saveErr.Error())
-				writeError(w, error_generic)
+				writeError(w, error_generic, http.StatusInternalServerError)
 			}
 
 			if setErr := o.storage.SetClient(theClient.Id, theClient); setErr != nil {
 				log.Printf("signup error during SetClient: %s", setErr.Error())
-				writeError(w, error_generic)
+				writeError(w, error_generic, http.StatusInternalServerError)
 			}
 			log.Print("processSignup: about to announce the details")
 			//Inform of the results
@@ -291,7 +291,7 @@ func (o *OAuthApi) processSignup(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if r.Method == "POST" && formValid == false {
 		log.Printf("processSignup: error[%s]", validationMsg)
-		writeError(w, validationMsg)
+		writeError(w, validationMsg, http.StatusBadRequest)
 	}
 }
 
@@ -308,9 +308,8 @@ func (o *OAuthApi) showAuthorize(w http.ResponseWriter, r *http.Request) {
 		o.showLogin(ar, w, r)
 	}
 	if resp.IsError && resp.InternalError != nil {
-		log.Print("showAuthorize: stink bro it's all gone pete tong")
-		log.Printf("ERROR: %s\n", resp.InternalError)
-		writeError(w, resp.InternalError.Error())
+		log.Printf("showAuthorize: stink bro it's all gone pete tong %s ", resp.InternalError)
+		writeError(w, resp.InternalError.Error(), http.StatusInternalServerError)
 	}
 	osin.OutputJSON(resp, w, r)
 }
@@ -327,9 +326,9 @@ func (o *OAuthApi) processAuthorize(w http.ResponseWriter, r *http.Request) {
 
 		if loggedInId := o.doLogin(ar, w, r); loggedInId == "" {
 			log.Print("processAuthorize: " + error_check_tidepool_creds)
-			w.WriteHeader(http.StatusUnauthorized) //we don't give any other details from the platform
+			//we don't give any other details from the platform
 			o.showLogin(ar, w, r)
-			writeError(w, error_check_tidepool_creds)
+			writeError(w, error_check_tidepool_creds, http.StatusUnauthorized)
 		} else {
 			log.Print("processAuthorize: user logged in so applying permissons on user")
 			log.Printf("Request %v", ar)
@@ -340,15 +339,13 @@ func (o *OAuthApi) processAuthorize(w http.ResponseWriter, r *http.Request) {
 				o.oauthServer.FinishAuthorizeRequest(resp, r, ar)
 			} else {
 				log.Printf("processAuthorize: error[%s]", error_applying_permissons)
-				w.WriteHeader(http.StatusInternalServerError)
-				writeError(w, error_applying_permissons)
+				writeError(w, error_applying_permissons, http.StatusInternalServerError)
 			}
 		}
 	}
 	if resp.IsError && resp.InternalError != nil {
 		log.Print("processAuthorize: error[%s]", resp.InternalError.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		writeError(w, error_oauth_service)
+		writeError(w, resp.InternalError.Error(), http.StatusInternalServerError)
 	}
 	osin.OutputJSON(resp, w, r)
 }
