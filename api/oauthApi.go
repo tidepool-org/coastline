@@ -301,14 +301,14 @@ func (o *OAuthApi) showAuthorize(w http.ResponseWriter, r *http.Request) {
 	resp := o.oauthServer.NewResponse()
 	defer resp.Close()
 
-	log.Print("authorize: off to handle auth request via oauthServer")
+	log.Print("showAuthorize: off to handle auth request via oauthServer")
 
 	if ar := o.oauthServer.HandleAuthorizeRequest(resp, r); ar != nil {
-		log.Print("authorize: show the login")
+		log.Print("showAuthorize: show the login")
 		o.showLogin(ar, w, r)
 	}
 	if resp.IsError && resp.InternalError != nil {
-		log.Print("authorize: stink bro it's all gone pete tong")
+		log.Print("showAuthorize: stink bro it's all gone pete tong")
 		log.Printf("ERROR: %s\n", resp.InternalError)
 		writeError(w, resp.InternalError.Error())
 	}
