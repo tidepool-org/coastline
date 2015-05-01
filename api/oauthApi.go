@@ -396,7 +396,6 @@ func (o *OAuthApi) authorize(w http.ResponseWriter, r *http.Request) {
 func (o *OAuthApi) token(w http.ResponseWriter, r *http.Request) {
 
 	log.Print("token: getting token")
-	applyStyle(w)
 
 	resp := o.oauthServer.NewResponse()
 	defer resp.Close()
@@ -415,7 +414,6 @@ func (o *OAuthApi) token(w http.ResponseWriter, r *http.Request) {
 func (o *OAuthApi) info(w http.ResponseWriter, r *http.Request) {
 
 	log.Print("OAuthApi: info")
-	applyStyle(w)
 
 	resp := o.oauthServer.NewResponse()
 	defer resp.Close()
