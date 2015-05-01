@@ -106,7 +106,7 @@ func (o *OAuthApi) SetHandlers(prefix string, rtr *mux.Router) {
 
 	//the oauth2 specific part of the api
 	rtr.HandleFunc(prefix+"/authorize", o.authorize).Methods("GET", "POST")
-	rtr.HandleFunc(prefix+"/token", o.token).Methods("GET")
+	rtr.HandleFunc(prefix+"/token", o.token).Methods("GET", "POST")
 	rtr.HandleFunc(prefix+"/info", o.info).Methods("GET")
 
 }
